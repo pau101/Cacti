@@ -1,0 +1,14 @@
+[{
+	"modid": "cacti",
+	"name": "Cacti",
+	"description": "Enables categorization of the creative inventory",
+	"version": "${version}",
+	"mcversion": "${mcversion}",
+	"url": "",
+	"updateUrl": "",
+	"authorList": [ "pau101" ],
+	"credits": "",
+	"logoFile": "",
+	"screenshots": [],
+	"dependencies": []
+}]

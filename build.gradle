@@ -1,0 +1,100 @@
+buildscript {
+	repositories {
+		jcenter()
+		maven {
+			name = "forge"
+			url = "http://files.minecraftforge.net/maven"
+		}
+	}
+	dependencies {
+		classpath "net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT"
+	}
+}
+
+apply plugin: "net.minecraftforge.gradle.forge"
+
+version = "1.0.0"
+group = "com.pau101.cacti"
+archivesBaseName = "cacti"
+sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_7
+
+minecraft {
+	version = "1.9-12.16.0.1865-1.9"
+	runDir = "run"
+	mappings = "snapshot_20160312"
+}
+
+dependencies {}
+
+processResources {
+	inputs.property "version", project.version
+	inputs.property "mcversion", project.minecraft.version
+	from(sourceSets.main.resources.srcDirs) {
+		include "mcmod.info"
+		expand "version": project.version, "mcversion": project.minecraft.version
+	}
+	from(sourceSets.main.resources.srcDirs) {
+		exclude "mcmod.info"
+	}
+}
+
+ext.sharedManifest = manifest {
+	attributes(
+		"FMLAT": "cacti_at.cfg",
+		"FMLCorePlugin": "com.pau101.cacti.asm.CactiLoadingPlugin",
+		"FMLCorePluginContainsFMLMod": "true"
+	)
+}
+
+jar {
+	classifier = "${project.minecraft.version}"
+	manifest.mainAttributes(
+		"FMLAT": "cacti_at.cfg",
+		"FMLCorePlugin": "com.pau101.cacti.asm.CactiLoadingPlugin",
+		"FMLCorePluginContainsFMLMod": "true"
+	)
+	exclude "com/pau101/cacti/HookInvoked.class"
+}
+
+javadoc {
+	include "com/pau101/cacti/api/*"
+	options.setLinksOffline([
+		createJavadocLink("http://java.sun.com/javase/7/docs/api/"),
+		createJavadocLink("http://docs.guava-libraries.googlecode.com/git/javadoc/")
+	])
+	options.addStringOption("-subpackages com.pau101.cacti.api")
+}
+
+def createJavadocLink(String url) {
+	return new JavadocOfflineLink(url, url);
+}
+
+task deobfJar(type: Jar) {
+	classifier = "${project.minecraft.version}-deobf"
+	from sourceSets.main.output
+	manifest.mainAttributes(
+		"FMLAT": "cacti_at.cfg",
+		"FMLCorePlugin": "com.pau101.cacti.asm.CactiLoadingPlugin",
+		"FMLCorePluginContainsFMLMod": "true"
+	)
+	exclude "com/pau101/cacti/HookInvoked.class"
+}
+
+task apiJar(type: Jar) {
+	classifier = "${project.minecraft.version}-api"
+	from sourceSets.main.output
+	include "com/pau101/cacti/api/*"
+}
+
+task apiSourcesJar(type: Jar) {
+	classifier = "${project.minecraft.version}-api-sources"
+	from sourceSets.main.allSource
+	include "com/pau101/cacti/api/*"
+}
+
+task apiJavadocJar(type: Jar, dependsOn: javadoc) {
+	classifier = "${project.minecraft.version}-api-javadoc"
+	from javadoc.destinationDir
+}
+
+tasks.build.dependsOn deobfJar, apiJar, apiSourcesJar, apiJavadocJar
