@@ -21,7 +21,6 @@ import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.client.event.GuiScreenEvent.PotionShiftEvent;
 import net.minecraftforge.common.ForgeModContainer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Loader;
@@ -29,10 +28,8 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.ModContainer;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Ordering;
 import com.pau101.cacti.api.CactiAPI;
 import com.pau101.cacti.api.CactiEntry;
 import com.pau101.cacti.api.CactiEntryCategory;
@@ -51,6 +48,8 @@ public class Cacti {
 	private static final ResourceLocation TABS_TEX = new ResourceLocation("textures/gui/container/creative_inventory/tabs.png");
 
 	private static final ResourceLocation BUTTON_TEX = new ResourceLocation("textures/gui/widgets.png");
+
+	private static final ResourceLocation INVENTORY_BACKGROUND = new ResourceLocation("textures/gui/container/inventory.png");
 
 	private static final String MISC_TAB_GROUP = "misc";
 
@@ -101,11 +100,11 @@ public class Cacti {
 		MinecraftForge.EVENT_BUS.register(this);
 	}
 
-	@SubscribeEvent
-	public void onPotionShift(PotionShiftEvent event) {
+	public static int onPotionShift(InventoryEffectRenderer gui, int shift) {
 		if (Minecraft.getMinecraft().currentScreen instanceof GuiContainerCreative) {
-			event.setCanceled(true);
+			return (gui.width - gui.xSize) / 2;
 		}
+		return shift;
 	}
 
 	@HookInvoked(callerClass = CreativeTabs.class, callerMethods = "<init>(ILjava/lang/String;)V")
@@ -471,13 +470,13 @@ public class Cacti {
 			if (collection.size() > 5) {
 				yStride = 132 / (collection.size() - 1);
 			}
-			for (PotionEffect effect : Ordering.natural().sortedCopy(collection)) {
-				Potion potion = effect.getPotion();
+			for (PotionEffect effect : collection) {
+				Potion potion = Potion.potionTypes[effect.getPotionID()];
 				if (!potion.shouldRender(effect)) {
 					continue;
 				}
 				GlStateManager.color(1, 1, 1);
-				gui.mc.getTextureManager().bindTexture(GuiContainer.inventoryBackground);
+				gui.mc.getTextureManager().bindTexture(INVENTORY_BACKGROUND);
 				gui.drawTexturedModalRect(x, y, 0, texV, texSplitWidth, 32);
 				gui.drawTexturedModalRect(x + texSplitWidth, y, texWidth - texSplitWidth, texV, texSplitWidth, 32);
 				if (potion.hasStatusIcon()) {
@@ -500,7 +499,7 @@ public class Cacti {
 				int levelWidth = font.getStringWidth(level);
 				name = fitString(font, name, texWidth - widthReduceAmount - 53 - levelWidth) + level;
 				font.drawStringWithShadow(name, x + 28, y + 6, 0xFFFFFF);
-				String remainingTime = Potion.getPotionDurationString(effect, 1);
+				String remainingTime = Potion.getDurationString(effect);
 				font.drawStringWithShadow(remainingTime, x + 28, y + 16, 0x7F7F7F);
 				y += yStride;
 			}

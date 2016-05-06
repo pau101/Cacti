@@ -137,6 +137,16 @@ public class CactiClassTransformer implements IClassTransformer {
 					insns.insertBefore(first, new JumpInsnNode(Opcodes.IFEQ, ret));
 				}
 			})
+			.with(new MethodTransformer("updateActivePotionEffects()V") {
+				@Override
+				public void transform(MethodNode method, InsnList insns) {
+					FieldInsnNode putGuiLeft = find(insns, Opcodes.PUTFIELD);
+					insns.insertBefore(putGuiLeft, new VarInsnNode(Opcodes.ALOAD, 0));
+					insns.insertBefore(putGuiLeft, new InsnNode(Opcodes.SWAP)); // just for preference
+					insns.insertBefore(putGuiLeft, new MethodInsnNode(Opcodes.INVOKESTATIC, CACTI, "onPotionShift",
+						"(L" + INVENTORY_EFFECT_RENDERER + ";I)I", false));
+				}
+			})
 		);
 	}
 

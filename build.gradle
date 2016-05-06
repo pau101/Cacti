@@ -19,9 +19,9 @@ archivesBaseName = "cacti"
 sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_7
 
 minecraft {
-	version = "1.9-12.16.0.1865-1.9"
+	version = "1.8.9-11.15.1.1890-1.8.9"
 	runDir = "run"
-	mappings = "snapshot_20160312"
+	mappings = "stable_20"
 }
 
 dependencies {}

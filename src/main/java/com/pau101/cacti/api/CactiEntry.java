@@ -4,7 +4,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 
 import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.util.text.translation.I18n;
+import net.minecraft.util.StatCollector;
 
 /**
  * A labeled entry representable in the creative inventory.
@@ -104,7 +104,7 @@ public abstract class CactiEntry {
 	 */
 	public final String getDisplayName() {
 		if (customName == null) {
-			return I18n.translateToLocal(unlocalizedNameKey);
+			return StatCollector.translateToLocal(unlocalizedNameKey);
 		}
 		return customName;
 	}
