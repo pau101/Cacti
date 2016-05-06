@@ -472,7 +472,7 @@ public class Cacti {
 			}
 			for (PotionEffect effect : collection) {
 				Potion potion = Potion.potionTypes[effect.getPotionID()];
-				if (!potion.shouldRender(effect)) {
+				if (!potion.shouldRenderInvText(effect)) {
 					continue;
 				}
 				GlStateManager.color(1, 1, 1);
