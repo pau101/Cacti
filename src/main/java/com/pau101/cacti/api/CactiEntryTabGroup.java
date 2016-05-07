@@ -6,6 +6,7 @@ import java.util.List;
 import net.minecraft.creativetab.CreativeTabs;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 
 /**
@@ -49,6 +50,7 @@ public final class CactiEntryTabGroup extends CactiEntry {
 	 *         present in this tab group
 	 */
 	public CactiEntryTabGroup withTab(String tabId) {
+		Preconditions.checkArgument(!Strings.isNullOrEmpty(tabId), "Tab must be non-null and not empty");
 		Preconditions.checkArgument(!tabs.contains(tabId), "Tab is already present: %s", tabId);
 		tabs.add(tabId);
 		return this;
