@@ -227,7 +227,16 @@ public class Cacti {
 		arr[CreativeTabs.tabInventory.tabIndex] = CreativeTabs.tabInventory;
 		for (int i = 0, idx = 0; i < tabs.size();) {
 			if (idx >= arr.length || arr[idx] == null) {
-				CreativeTabs tab = tabMap.get(tabs.get(i++));
+				String tabId = tabs.get(i++);
+				CreativeTabs tab = tabMap.get(tabId);
+				if (tab == null) {
+					throw new IllegalStateException(String.format(
+						"The TabGroup \"%s\" contains the tab id \"%s\" " +
+						"which does not map to a known CreativeTabs, " +
+						"unused tab ids are not supported in tab groups.",
+						currentTabGroup.getDisplayName(), tabId
+					));
+				}
 				if (tab == CreativeTabs.tabInventory || tab == CreativeTabs.tabAllSearch) {
 					continue;
 				} else {
