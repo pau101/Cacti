@@ -32,7 +32,13 @@ import com.pau101.cacti.api.CactiEntry;
 import com.pau101.cacti.api.CactiEntryCategory;
 import com.pau101.cacti.api.CactiEntryTabGroup;
 
-@Mod(modid = Cacti.MODID, name = Cacti.NAME, version = Cacti.VERSION, clientSideOnly = true)
+@Mod(
+	modid = Cacti.MODID,
+	name = Cacti.NAME,
+	version = Cacti.VERSION,
+	clientSideOnly = true,
+	dependencies = "required-after:Forge@[11.15.1.1890,);"
+)
 public class Cacti {
 	public static final String MODID = "cacti";
 
