@@ -22,12 +22,9 @@ import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.ForgeModContainer;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.ModContainer;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 
 import com.google.common.collect.ImmutableList;
 import com.pau101.cacti.api.CactiAPI;
@@ -94,11 +91,6 @@ public class Cacti {
 	private static GuiButton pagePrevious;
 
 	private static GuiButton pageNext;
-
-	@EventHandler
-	public void init(FMLPreInitializationEvent event) {
-		MinecraftForge.EVENT_BUS.register(this);
-	}
 
 	public static int onPotionShift(InventoryEffectRenderer gui, int shift) {
 		if (Minecraft.getMinecraft().currentScreen instanceof GuiContainerCreative) {
