@@ -21,7 +21,6 @@ import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.common.MinecraftForge;
 
 import org.lwjgl.opengl.GL11;
 
@@ -33,9 +32,7 @@ import com.pau101.cacti.api.CactiEntryTabGroup;
 
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.Mod;
-import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.ModContainer;
-import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 
 @Mod(modid = Cacti.MODID, name = Cacti.NAME, version = Cacti.VERSION)
 public class Cacti {
@@ -96,11 +93,6 @@ public class Cacti {
 	private static GuiButton pagePrevious;
 
 	private static GuiButton pageNext;
-
-	@EventHandler
-	public void init(FMLPreInitializationEvent event) {
-		MinecraftForge.EVENT_BUS.register(this);
-	}
 
 	@HookInvoked(callerClass = CreativeTabs.class, callerMethods = "<init>(ILjava/lang/String;)V")
 	public static void initCreativeTab(CreativeTabs tab) {
