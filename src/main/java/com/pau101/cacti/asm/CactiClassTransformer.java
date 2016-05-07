@@ -101,7 +101,7 @@ public class CactiClassTransformer implements IClassTransformer {
 					insns.insertBefore(check, new JumpInsnNode(Opcodes.IFNULL, inc));
 				}
 			})
-			.with(new MethodTransformer("mouseReleased(III)V") {
+			.with(new MethodTransformer("mouseMovedOrUp(III)V") {
 				@Override
 				public void transform(MethodNode method, InsnList insns) {
 					InsnNode ret = findLast(insns, Opcodes.RETURN);
@@ -126,7 +126,7 @@ public class CactiClassTransformer implements IClassTransformer {
 			})
 		);
 		classTransformers.add(new ClassTransformer(INVENTORY_EFFECT_RENDERER)
-			.with(new MethodTransformer("drawActivePotionEffects()V") {
+			.with(new MethodTransformer("func_147044_g()V") {
 				@Override
 				public void transform(MethodNode method, InsnList insns) {
 					AbstractInsnNode first = insns.get(0);
@@ -135,16 +135,6 @@ public class CactiClassTransformer implements IClassTransformer {
 						"(L" + INVENTORY_EFFECT_RENDERER + ";)Z", false));
 					LabelNode ret = firstTypeBefore(findLast(insns, Opcodes.RETURN), AbstractInsnNode.LABEL);
 					insns.insertBefore(first, new JumpInsnNode(Opcodes.IFEQ, ret));
-				}
-			})
-			.with(new MethodTransformer("updateActivePotionEffects()V") {
-				@Override
-				public void transform(MethodNode method, InsnList insns) {
-					FieldInsnNode putGuiLeft = find(insns, Opcodes.PUTFIELD);
-					insns.insertBefore(putGuiLeft, new VarInsnNode(Opcodes.ALOAD, 0));
-					insns.insertBefore(putGuiLeft, new InsnNode(Opcodes.SWAP)); // just for preference
-					insns.insertBefore(putGuiLeft, new MethodInsnNode(Opcodes.INVOKESTATIC, CACTI, "onPotionShift",
-						"(L" + INVENTORY_EFFECT_RENDERER + ";I)I", false));
 				}
 			})
 		);

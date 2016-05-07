@@ -3,9 +3,10 @@ package com.pau101.cacti.asm;
 import java.util.Map;
 
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
 
 import com.pau101.cacti.Cacti;
+
+import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 
 @IFMLLoadingPlugin.Name(Cacti.NAME)
 @IFMLLoadingPlugin.MCVersion(MinecraftForge.MC_VERSION)

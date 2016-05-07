@@ -1,6 +1,5 @@
 package com.pau101.cacti;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,22 +11,19 @@ import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.gui.inventory.GuiContainerCreative;
-import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.InventoryEffectRenderer;
+import net.minecraft.client.resources.FallbackResourceManager;
 import net.minecraft.client.resources.I18n;
-import net.minecraft.client.resources.IResource;
-import net.minecraft.client.resources.SimpleResource;
+import net.minecraft.client.resources.IResourceManager;
+import net.minecraft.client.resources.IResourcePack;
+import net.minecraft.client.resources.SimpleReloadableResourceManager;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.common.ForgeModContainer;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.common.Loader;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.Mod.EventHandler;
-import net.minecraftforge.fml.common.ModContainer;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+
+import org.lwjgl.opengl.GL11;
 
 import com.google.common.collect.ImmutableList;
 import com.pau101.cacti.api.CactiAPI;
@@ -35,7 +31,13 @@ import com.pau101.cacti.api.CactiEntry;
 import com.pau101.cacti.api.CactiEntryCategory;
 import com.pau101.cacti.api.CactiEntryTabGroup;
 
-@Mod(modid = Cacti.MODID, name = Cacti.NAME, version = Cacti.VERSION, clientSideOnly = true)
+import cpw.mods.fml.common.Loader;
+import cpw.mods.fml.common.Mod;
+import cpw.mods.fml.common.Mod.EventHandler;
+import cpw.mods.fml.common.ModContainer;
+import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+
+@Mod(modid = Cacti.MODID, name = Cacti.NAME, version = Cacti.VERSION)
 public class Cacti {
 	public static final String MODID = "cacti";
 
@@ -100,13 +102,6 @@ public class Cacti {
 		MinecraftForge.EVENT_BUS.register(this);
 	}
 
-	public static int onPotionShift(InventoryEffectRenderer gui, int shift) {
-		if (Minecraft.getMinecraft().currentScreen instanceof GuiContainerCreative) {
-			return (gui.width - gui.xSize) / 2;
-		}
-		return shift;
-	}
-
 	@HookInvoked(callerClass = CreativeTabs.class, callerMethods = "<init>(ILjava/lang/String;)V")
 	public static void initCreativeTab(CreativeTabs tab) {
 		tabMap.put(tab.getTabLabel(), tab);
@@ -163,7 +158,7 @@ public class Cacti {
 		String widgetsOwnerName = getName(widgetsOwner);
 		String tabsOwnerName = getName(tabsOwner);
 		String defaultPack = Minecraft.getMinecraft().mcDefaultResourcePack.getPackName();
-		String devDefaultPack = ForgeModContainer.getInstance().getName();
+		String devDefaultPack = "Minecraft Forge";
 		if (widgetsOwner.isEmpty() || tabsOwner.isEmpty()) {
 			shouldUseButtonRibbonRender = true;
 		} else if (widgetsOwnerName.equals(Cacti.NAME) && (tabsOwnerName.equals(defaultPack) || tabsOwnerName.equals(devDefaultPack))) {
@@ -171,15 +166,24 @@ public class Cacti {
 		} else {
 			shouldUseButtonRibbonRender = !widgetsOwner.equals(tabsOwner);
 		}
+		if (!gui.mc.thePlayer.getActivePotionEffects().isEmpty()) {
+			gui.guiLeft = (gui.width - gui.xSize) / 2;
+		}
 	}
 
 	private static String getCurrentResourceOwner(ResourceLocation location) {
-		try {
-			IResource res = Minecraft.getMinecraft().getResourceManager().getResource(location);
-			if (res instanceof SimpleResource) {
-				return ((SimpleResource) res).getResourcePackName();
+		IResourceManager manager = Minecraft.getMinecraft().getResourceManager();
+		if (manager instanceof SimpleReloadableResourceManager) {
+			SimpleReloadableResourceManager simpleMgr = (SimpleReloadableResourceManager) manager;
+			FallbackResourceManager fallbackMgr = (FallbackResourceManager) simpleMgr.domainResourceManagers.get(location.getResourceDomain());
+			List<IResourcePack> packs = fallbackMgr.resourcePacks;
+			for (int i = packs.size(); i --> 0;) {
+				IResourcePack pack = packs.get(i);
+				if (pack.resourceExists(location)) {
+					return pack.getPackName();
+				}
 			}
-		} catch (IOException e) {}
+		}
 		return "";
 	}
 
@@ -263,7 +267,7 @@ public class Cacti {
 	}
 
 	private static void updateRibbonWidths() {
-		FontRenderer font = Minecraft.getMinecraft().fontRendererObj;
+		FontRenderer font = Minecraft.getMinecraft().fontRenderer;
 		for (int i = 0; i < ribbonWidths.length; i++) {
 			if (i < currentPageEntries.size()) {
 				ribbonWidths[i] = font.getStringWidth(currentPageEntries.get(i).getDisplayName());
@@ -282,7 +286,7 @@ public class Cacti {
 		CactiEntryCategory owner = currentCategory.getOwner();
 		if (parentCategory.visible = owner != null) {
 			String name = owner.getDisplayName();
-			parentCategory.displayString = fitString(gui.mc.fontRendererObj, name, parentCategory.width - 6);
+			parentCategory.displayString = fitString(gui.mc.fontRenderer, name, parentCategory.width - 6);
 		}
 	}
 
@@ -335,7 +339,7 @@ public class Cacti {
 		if (currentPageEntries.size() == 0) {
 			return;
 		}
-		GlStateManager.disableLighting();
+		GL11.glDisable(GL11.GL_LIGHTING);
 		gui.mc.getTextureManager().bindTexture(shouldUseButtonRibbonRender ? BUTTON_TEX : WIDGETS_TEX);
 		renderEntryRibbonTiles(gui, currentPageEntries, currentTabGroup, Pass.BACKGROUND);
 		renderEntryRibbonTiles(gui, currentPageEntries, currentTabGroup, Pass.TEXT);
@@ -353,7 +357,7 @@ public class Cacti {
 			}
 			if (renderPages) {
 				pagePrevious.xPosition = leftX - LEFT_BUTTON_WIDTH;
-				FontRenderer font = gui.mc.fontRendererObj;
+				FontRenderer font = gui.mc.fontRenderer;
 				String str = String.format("%d / %d", categoryPage + 1, pages + 1);
 				if (pageNext.xPosition - pagePrevious.xPosition - pagePrevious.width - 5 < font.getStringWidth(str)) {
 					str = Integer.toString(categoryPage + 1);
@@ -368,7 +372,7 @@ public class Cacti {
 	public static void drawScreen(GuiContainerCreative gui, int mouseX, int mouseY) {
 		CactiEntry entry = getCategoryAtCursor(gui, mouseX, mouseY);
 		if (entry != null) {
-			FontRenderer font = gui.mc.fontRendererObj;
+			FontRenderer font = gui.mc.fontRenderer;
 			String name = entry.getDisplayName();
 			String shown = fitString(font, name, getAvailableEntryWidth(font, gui.guiLeft - 3, name) - 4);
 			if (!name.equals(shown)) {
@@ -378,7 +382,7 @@ public class Cacti {
 	}
 
 	private static void renderEntryRibbonTiles(GuiContainer gui, List<CactiEntry> entries, CactiEntry selected, Pass pass) {
-		FontRenderer font = gui.mc.fontRendererObj;
+		FontRenderer font = gui.mc.fontRenderer;
 		int rightSpace = gui.guiLeft - 3;
 		for (int i = 0, size = entries.size(); i < size; i++) {
 			CactiEntry entry = entries.get(i);
@@ -427,9 +431,9 @@ public class Cacti {
 		int v;
 		if (isSelected) {
 			v = 0;
-			GlStateManager.translate(0, 0, 1);
+			GL11.glTranslatef(0, 0, 1);
 			gui.drawTexturedModalRect(gui.guiLeft, y, 51, 0, 4, RIBBON_TILE_SIZE);
-			GlStateManager.translate(0, 0, -1);
+			GL11.glTranslatef(0, 0, -1);
 		} else {
 			v = 17;
 		}
@@ -463,9 +467,9 @@ public class Cacti {
 		int widthReduceAmount = Math.max(0, texWidth - leftSpace);
 		int texSplitWidth = (texWidth - widthReduceAmount) / 2;
 		Collection<PotionEffect> collection = gui.mc.thePlayer.getActivePotionEffects();
-		FontRenderer font = gui.mc.fontRendererObj;
+		FontRenderer font = gui.mc.fontRenderer;
 		if (!collection.isEmpty()) {
-			GlStateManager.disableLighting();
+			GL11.glDisable(GL11.GL_LIGHTING);
 			int yStride = 33;
 			if (collection.size() > 5) {
 				yStride = 132 / (collection.size() - 1);
@@ -475,7 +479,7 @@ public class Cacti {
 				if (!potion.shouldRenderInvText(effect)) {
 					continue;
 				}
-				GlStateManager.color(1, 1, 1);
+				GL11.glColor3f(1, 1, 1);
 				gui.mc.getTextureManager().bindTexture(INVENTORY_BACKGROUND);
 				gui.drawTexturedModalRect(x, y, 0, texV, texSplitWidth, 32);
 				gui.drawTexturedModalRect(x + texSplitWidth, y, texWidth - texSplitWidth, texV, texSplitWidth, 32);
