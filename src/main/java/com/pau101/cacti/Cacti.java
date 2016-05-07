@@ -34,7 +34,12 @@ import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.ModContainer;
 
-@Mod(modid = Cacti.MODID, name = Cacti.NAME, version = Cacti.VERSION)
+@Mod(
+	modid = Cacti.MODID,
+	name = Cacti.NAME,
+	version = Cacti.VERSION,
+	dependencies = "required-after:Forge@[10.13.4.1614,);"
+)
 public class Cacti {
 	public static final String MODID = "cacti";
 
