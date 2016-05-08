@@ -1,11 +1,11 @@
 package com.pau101.cacti;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -22,11 +22,15 @@ import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.ForgeModContainer;
+import net.minecraftforge.fml.common.LoadController;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.ModContainer;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ListMultimap;
 import com.pau101.cacti.api.CactiAPI;
 import com.pau101.cacti.api.CactiEntry;
 import com.pau101.cacti.api.CactiEntryCategory;
@@ -78,7 +82,7 @@ public class Cacti {
 
 	private static boolean shouldUseButtonRibbonRender;
 
-	private static Map<String, CreativeTabs> tabMap = new HashMap<>();
+	private static List<Pair<CreativeTabs, ModContainer>> capturedCreativeTabs = new ArrayList<>(12);
 
 	private static CactiEntryCategory currentCategory = CactiAPI.categories();
 
@@ -107,31 +111,68 @@ public class Cacti {
 
 	@HookInvoked(callerClass = CreativeTabs.class, callerMethods = "<init>(ILjava/lang/String;)V")
 	public static void initCreativeTab(CreativeTabs tab) {
-		tabMap.put(tab.getTabLabel(), tab);
-		if (CactiAPI.categories().contains(tab)) {
-			return;
-		}
-		ModContainer mod = Loader.instance().activeModContainer();
-		CactiEntryTabGroup tabGroup;
-		boolean isMod = mod != null;
-		String id = isMod ? mod.getModId() : "minecraft";
-		if (CactiAPI.categories().hasCategory(id)) {
-			CactiEntryCategory category = CactiAPI.categories().getCategory(id);
-			tabGroup = category.getTabGroup(MISC_TAB_GROUP);
-			if (tabGroup == null) {
-				tabGroup = category.withTabGroup(MISC_TAB_GROUP);
-				tabGroup.setUnlocalizedNameKey("itemGroup.misc");
-			}
-		} else {
-			tabGroup = CactiAPI.categories().getTabGroup(id);
-			if (tabGroup == null) {
-				tabGroup = CactiAPI.categories().withTabGroup(id);
-				if (isMod) {
-					tabGroup.setCustomName(mod.getName());
+		ModContainer mod = null;
+		try {
+			// Just a bit of FML hackery to make our lives easier
+			Field modControllerField = Loader.class.getDeclaredField("modController");
+			Field packageOwnersField = LoadController.class.getDeclaredField("packageOwners");
+			modControllerField.setAccessible(true);
+			packageOwnersField.setAccessible(true);
+			LoadController controller = (LoadController) modControllerField.get(Loader.instance());
+			// Null if we're in vanilla bootstrap
+			if (controller != null) {
+				ListMultimap<String, ModContainer> packageOwners = (ListMultimap<String, ModContainer>) packageOwnersField.get(controller);
+				// If empty the CreativeTabs was probably created during FMLConstruction in <init> or <cinit>
+				if (packageOwners.size() > 0) {
+					String name = tab.getClass().getName();
+					int pkgIdx = name.lastIndexOf('.');
+					if (pkgIdx > -1) {
+						String pkg = name.substring(0, pkgIdx);
+						// I'm pretty sure it is guaranteed to have it at this point, just in case
+						if (packageOwners.containsKey(pkg)) {
+							mod = packageOwners.get(pkg).get(0);
+						}
+					}
+					// else the CreativeTabs is in the default package
+				}
+				// Either packageOwners is empty or the package is in default or unknown
+				if (mod == null) {
+					mod = Loader.instance().activeModContainer();
 				}
 			}
+		} catch (Exception e) { /* Shhh... */ }
+		capturedCreativeTabs.add(Pair.of(tab, mod));
+	}
+
+	private static void initializeCapturedCreativeTabs() {
+		while (capturedCreativeTabs.size() > 0) {
+			Pair<CreativeTabs, ModContainer> tabCapture = capturedCreativeTabs.remove(0);
+			CreativeTabs tab = tabCapture.getLeft();
+			if (CactiAPI.categories().contains(tab)) {
+				continue;
+			}
+			ModContainer mod = tabCapture.getRight();
+			CactiEntryTabGroup tabGroup;
+			boolean isMod = mod != null;
+			String id = isMod ? mod.getModId() : "minecraft";
+			if (CactiAPI.categories().hasCategory(id)) {
+				CactiEntryCategory category = CactiAPI.categories().getCategory(id);
+				tabGroup = category.getTabGroup(MISC_TAB_GROUP);
+				if (tabGroup == null) {
+					tabGroup = category.withTabGroup(MISC_TAB_GROUP);
+					tabGroup.setUnlocalizedNameKey("itemGroup.misc");
+				}
+			} else {
+				tabGroup = CactiAPI.categories().getTabGroup(id);
+				if (tabGroup == null) {
+					tabGroup = CactiAPI.categories().withTabGroup(id);
+					if (isMod) {
+						tabGroup.setCustomName(mod.getName());
+					}
+				}
+			}
+			tabGroup.withTab(tab);
 		}
-		tabGroup.withTab(tab.getTabLabel());
 	}
 
 	@HookInvoked(callerClass = GuiContainerCreative.class, callerMethods = "initGui()V")
@@ -143,6 +184,7 @@ public class Cacti {
 		gui.buttonList.add(parentCategory);
 		gui.buttonList.add(pagePrevious);
 		gui.buttonList.add(pageNext);
+		initializeCapturedCreativeTabs();
 		int index = GuiContainerCreative.selectedTabIndex;
 		GuiContainerCreative.selectedTabIndex = -1;
 		CactiEntryTabGroup group = currentTabGroup;
@@ -206,28 +248,19 @@ public class Cacti {
 	private static void setCurrentTabGroup(GuiContainerCreative gui, CactiEntryTabGroup group) {
 		currentTabGroup = group;
 		if (group == null) {
-			updateTabs(gui, ImmutableList.<String>of());
+			updateTabs(gui, ImmutableList.<CreativeTabs>of());
 		} else {
 			updateTabs(gui, group.getTabs());
 		}
 	}
 
-	private static void updateTabs(GuiContainerCreative gui, ImmutableList<String> tabs) {
+	private static void updateTabs(GuiContainerCreative gui, ImmutableList<CreativeTabs> tabs) {
 		CreativeTabs[] arr = CreativeTabs.creativeTabArray = new CreativeTabs[Math.max(tabs.size(), 12)];
 		arr[CreativeTabs.tabAllSearch.tabIndex] = CreativeTabs.tabAllSearch;
 		arr[CreativeTabs.tabInventory.tabIndex] = CreativeTabs.tabInventory;
 		for (int i = 0, idx = 0; i < tabs.size();) {
 			if (idx >= arr.length || arr[idx] == null) {
-				String tabId = tabs.get(i++);
-				CreativeTabs tab = tabMap.get(tabId);
-				if (tab == null) {
-					throw new IllegalStateException(String.format(
-						"The TabGroup \"%s\" contains the tab id \"%s\" " +
-						"which does not map to a known CreativeTabs, " +
-						"unused tab ids are not supported in tab groups.",
-						currentTabGroup.getDisplayName(), tabId
-					));
-				}
+				CreativeTabs tab = tabs.get(i++);
 				if (tab == CreativeTabs.tabInventory || tab == CreativeTabs.tabAllSearch) {
 					continue;
 				} else {
@@ -240,7 +273,7 @@ public class Cacti {
 		if (tabs.isEmpty()) {
 			gui.setCurrentCreativeTab(CreativeTabs.tabInventory);
 		} else {
-			gui.setCurrentCreativeTab(tabMap.get(tabs.get(0)));
+			gui.setCurrentCreativeTab(tabs.get(0));
 		}
 	}
 
