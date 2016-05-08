@@ -5,6 +5,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 import net.minecraft.client.Minecraft;
@@ -31,6 +32,7 @@ import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.ModContainer;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.relauncher.ReflectionHelper;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -267,8 +269,8 @@ public class Cacti {
 		CreativeTabs[] arr = CreativeTabs.creativeTabArray = new CreativeTabs[Math.max(tabs.size(), 12)];
 		arr[CreativeTabs.tabAllSearch.tabIndex] = CreativeTabs.tabAllSearch;
 		arr[CreativeTabs.tabInventory.tabIndex] = CreativeTabs.tabInventory;
-		for (int i = 0, idx = 0; i < tabs.size();) {
-			if (idx >= arr.length || arr[idx] == null) {
+		for (int i = 0, idx = 0; idx < arr.length;) {
+			if (arr[idx] == null) {
 				CreativeTabs tab = tabs.get(i++);
 				if (tab == CreativeTabs.tabInventory || tab == CreativeTabs.tabAllSearch) {
 					continue;
@@ -276,9 +278,43 @@ public class Cacti {
 					arr[idx] = tab;
 					tab.tabIndex = idx;
 				}
+				if (i == tabs.size()) {
+					break;
+				}
 			}
 			idx++;
 		}
+		int maxPages;
+		final int prevId = 101, nextId = 102;
+		if (arr.length > 12) {
+			boolean needPrev = true, needNext = true;
+			for (GuiButton button : gui.buttonList) {
+				if (button.id == prevId) {
+					needPrev = false;
+				} else if (button.id == nextId) {
+					needNext = false;
+				}
+			}
+			if (needPrev) {
+				gui.buttonList.add(new GuiButton(prevId, gui.guiLeft, gui.guiTop - 50, 20, 20, "<"));
+			}
+			if (needNext) {
+				gui.buttonList.add(new GuiButton(nextId, gui.guiLeft + gui.xSize - 20, gui.guiTop - 50, 20, 20, ">"));
+			}
+			maxPages = ((arr.length - 12) / 10) + 1;
+		} else {
+			Iterator<GuiButton> buttonIter = gui.buttonList.iterator();
+			while (buttonIter.hasNext()) {
+				GuiButton button = buttonIter.next();
+				if (button.id == prevId || button.id == nextId) {
+					buttonIter.remove();
+				}
+			}
+			maxPages = 0;
+		}
+		// Can't AT a Forge patched member
+		ReflectionHelper.setPrivateValue(GuiContainerCreative.class, gui, maxPages, "maxPages");
+		ReflectionHelper.setPrivateValue(GuiContainerCreative.class, null, 0, "tabPage");
 		if (tabs.isEmpty()) {
 			gui.setCurrentCreativeTab(CreativeTabs.tabInventory);
 		} else {
