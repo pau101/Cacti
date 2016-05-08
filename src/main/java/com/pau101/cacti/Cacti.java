@@ -279,7 +279,7 @@ public class Cacti {
 		final int prevId = 101, nextId = 102;
 		if (arr.length > 12) {
 			boolean needPrev = true, needNext = true;
-			for (GuiButton button : gui.buttonList) {
+			for (GuiButton button : (List<GuiButton>) gui.buttonList) {
 				if (button.id == prevId) {
 					needPrev = false;
 				} else if (button.id == nextId) {
