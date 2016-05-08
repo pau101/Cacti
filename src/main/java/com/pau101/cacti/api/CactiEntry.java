@@ -113,9 +113,6 @@ public abstract class CactiEntry {
 	 * Returns {@code true} if the specified CreativeTabs is
 	 * contained within this entry.
 	 *
-	 * The id supplied by {@code CreativeTabs#getTabLabel()} of
-	 * the CreativeTabs is used to determine equality.
-	 *
 	 * @param tab the CreativeTabs whose presence in this entry
 	 *        is to be tested
 	 * @return {@code true} if this entry contains the specified
