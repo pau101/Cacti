@@ -257,23 +257,21 @@ public class Cacti {
 	}
 
 	private static void updateTabs(GuiContainerCreative gui, ImmutableList<CreativeTabs> tabs) {
-		CreativeTabs[] arr = CreativeTabs.creativeTabArray = new CreativeTabs[Math.max(tabs.size(), 12)];
+		CreativeTabs[] tabsArray = new CreativeTabs[tabs.size()];
+		int len = 0;
+		for (CreativeTabs tab : tabs) {
+			if (tab == CreativeTabs.tabInventory || tab == CreativeTabs.tabAllSearch) {
+				continue;
+			}
+			tabsArray[len++] = tab;
+		}
+		CreativeTabs[] arr = CreativeTabs.creativeTabArray = new CreativeTabs[Math.max(len + 2, 12)];
 		arr[CreativeTabs.tabAllSearch.tabIndex] = CreativeTabs.tabAllSearch;
 		arr[CreativeTabs.tabInventory.tabIndex] = CreativeTabs.tabInventory;
-		for (int i = 0, idx = 0; idx < arr.length;) {
+		for (int i = 0, idx = 0; i < len; idx++) {
 			if (arr[idx] == null) {
-				CreativeTabs tab = tabs.get(i++);
-				if (tab == CreativeTabs.tabInventory || tab == CreativeTabs.tabAllSearch) {
-					continue;
-				} else {
-					arr[idx] = tab;
-					tab.tabIndex = idx;
-				}
-				if (i == tabs.size()) {
-					break;
-				}
+				(arr[idx] = tabsArray[i++]).tabIndex = idx;
 			}
-			idx++;
 		}
 		int maxPages;
 		final int prevId = 101, nextId = 102;
@@ -358,7 +356,7 @@ public class Cacti {
 		CactiEntryCategory owner = currentCategory.getOwner();
 		if (parentCategory.visible = owner != null) {
 			String name = owner.getDisplayName();
-			parentCategory.displayString = fitString(gui.mc.fontRendererObj, name, parentCategory.width - 6);
+			parentCategory.displayString = name;
 		}
 	}
 
@@ -426,6 +424,7 @@ public class Cacti {
 			if (parentCategoryButtonVisible) {
 				parentCategory.width = leftWidth;
 				parentCategory.xPosition = leftX - LEFT_BUTTON_WIDTH;
+				parentCategory.displayString = fitString(gui.mc.fontRendererObj, currentCategory.getDisplayName(), parentCategory.width - 6);
 			}
 			if (renderPages) {
 				pagePrevious.xPosition = leftX - LEFT_BUTTON_WIDTH;
