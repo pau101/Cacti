@@ -23,6 +23,15 @@ public final class CactiEntryTabGroup extends CactiEntry {
 	}
 
 	/**
+	 * Returns the number of tabs in this tab group.
+	 *
+	 * @return the number of tabs in this tab group
+	 */
+	public int size() {
+		return tabs.size();
+	}
+
+	/**
 	 * Returns an immutable copy of the tabs
 	 * within this tab group.
 	 *
@@ -46,7 +55,7 @@ public final class CactiEntryTabGroup extends CactiEntry {
 	 *         or is already present in this tab group
 	 */
 	public CactiEntryTabGroup withTab(CreativeTabs tab) {
-		Preconditions.checkArgument(tab != null, "Tab must be non-null");
+		Preconditions.checkNotNull(tab, "Tab must be non-null");
 		Preconditions.checkArgument(!tabs.contains(tab), "Tab is already present: %s", tab.getTabLabel());
 		tabs.add(tab);
 		return this;

@@ -5,8 +5,10 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -23,13 +25,16 @@ import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.ForgeModContainer;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.fml.client.event.ConfigChangedEvent;
 import net.minecraftforge.fml.common.LoadController;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.ModContainer;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
-
-import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ListMultimap;
@@ -37,13 +42,15 @@ import com.pau101.cacti.api.CactiAPI;
 import com.pau101.cacti.api.CactiEntry;
 import com.pau101.cacti.api.CactiEntryCategory;
 import com.pau101.cacti.api.CactiEntryTabGroup;
+import com.pau101.cacti.config.Configurator;
 
 @Mod(
 	modid = Cacti.MODID,
 	name = Cacti.NAME,
 	version = Cacti.VERSION,
 	clientSideOnly = true,
-	dependencies = "required-after:Forge@[11.15.1.1890,);"
+	dependencies = "required-after:Forge@[11.15.1.1890,);",
+	guiFactory = "com.pau101.cacti.gui.CactiGuiFactory"
 )
 public class Cacti {
 	public static final String MODID = "cacti";
@@ -60,7 +67,11 @@ public class Cacti {
 
 	private static final ResourceLocation INVENTORY_BACKGROUND = new ResourceLocation("textures/gui/container/inventory.png");
 
+	private static final String MINECRAFT_TAB_GROUP = "minecraft";
+
 	private static final String MISC_TAB_GROUP = "misc";
+
+	private static final String MODS_TAB_GROUP = "mods";
 
 	private static final int ENTRIES_PER_PAGE = 8;
 
@@ -84,7 +95,9 @@ public class Cacti {
 
 	private static boolean shouldUseButtonRibbonRender;
 
-	private static List<Pair<CreativeTabs, ModContainer>> capturedCreativeTabs = new ArrayList<>(12);
+	private static Map<ModContainer, List<CreativeTabs>> capturedCreativeTabs = new HashMap<>();
+
+	private static Map<ModContainer, List<CreativeTabs>> creativeTabs = new HashMap<>();
 
 	private static CactiEntryCategory currentCategory = CactiAPI.categories();
 
@@ -104,11 +117,24 @@ public class Cacti {
 
 	private static GuiButton pageNext;
 
+	@EventHandler
+	public void init(FMLPreInitializationEvent event) {
+		MinecraftForge.EVENT_BUS.register(this);
+		Configurator.init(event);
+	}
+
 	public static int onPotionShift(InventoryEffectRenderer gui, int shift) {
 		if (Minecraft.getMinecraft().currentScreen instanceof GuiContainerCreative) {
 			return (gui.width - gui.xSize) / 2;
 		}
 		return shift;
+	}
+
+	@SubscribeEvent
+	public void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {
+		if (Cacti.MODID.equals(event.modID)) {
+			Configurator.update();
+		}
 	}
 
 	@HookInvoked(callerClass = CreativeTabs.class, callerMethods = "<init>(ILjava/lang/String;)V")
@@ -143,37 +169,117 @@ public class Cacti {
 				}
 			}
 		} catch (Exception e) { /* Shhh... */ }
-		capturedCreativeTabs.add(Pair.of(tab, mod));
+		List<CreativeTabs> tabs = capturedCreativeTabs.get(mod);
+		if (tabs == null) {
+			tabs = new ArrayList<CreativeTabs>();
+			capturedCreativeTabs.put(mod, tabs);
+		}
+		tabs.add(tab);
 	}
 
 	private static void initializeCapturedCreativeTabs() {
-		while (capturedCreativeTabs.size() > 0) {
-			Pair<CreativeTabs, ModContainer> tabCapture = capturedCreativeTabs.remove(0);
-			CreativeTabs tab = tabCapture.getLeft();
-			if (CactiAPI.categories().contains(tab)) {
-				continue;
+		Iterator<ModContainer> mods = capturedCreativeTabs.keySet().iterator();
+		while (mods.hasNext()) {
+			ModContainer mod = mods.next();
+			List<CreativeTabs> tabs = capturedCreativeTabs.get(mod);
+			mods.remove();
+			List<CreativeTabs> existingTabs = creativeTabs.get(mod);
+			if (existingTabs == null) {
+				existingTabs = new ArrayList<CreativeTabs>();
+				creativeTabs.put(mod, existingTabs);
 			}
-			ModContainer mod = tabCapture.getRight();
-			CactiEntryTabGroup tabGroup;
-			boolean isMod = mod != null;
-			String id = isMod ? mod.getModId() : "minecraft";
-			if (CactiAPI.categories().hasCategory(id)) {
-				CactiEntryCategory category = CactiAPI.categories().getCategory(id);
-				tabGroup = category.getTabGroup(MISC_TAB_GROUP);
-				if (tabGroup == null) {
-					tabGroup = category.withTabGroup(MISC_TAB_GROUP);
-					tabGroup.setUnlocalizedNameKey("itemGroup.misc");
+			existingTabs.addAll(tabs);
+			boolean addToGroupedMods = tabs.size() == 1 && Configurator.groupSingleTabMods();
+			for (CreativeTabs tab : tabs) {
+				if (CactiAPI.categories().contains(tab)) {
+					continue;
 				}
-			} else {
-				tabGroup = CactiAPI.categories().getTabGroup(id);
-				if (tabGroup == null) {
-					tabGroup = CactiAPI.categories().withTabGroup(id);
-					if (isMod) {
-						tabGroup.setCustomName(mod.getName());
+				CactiEntryTabGroup tabGroup;
+				boolean isMod = mod != null;
+				String id = isMod ? mod.getModId() : MINECRAFT_TAB_GROUP;
+				if (CactiAPI.categories().hasCategory(id)) {
+					CactiEntryCategory category = CactiAPI.categories().getCategory(id);
+					tabGroup = category.getTabGroup(MISC_TAB_GROUP);
+					if (tabGroup == null) {
+						tabGroup = category.withTabGroup(MISC_TAB_GROUP);
+						tabGroup.setUnlocalizedNameKey("itemGroup.misc");
+					}
+				} else {
+					String groupId = addToGroupedMods ? MODS_TAB_GROUP : id;
+					tabGroup = CactiAPI.categories().getTabGroup(groupId);
+					if (tabGroup == null) {
+						tabGroup = CactiAPI.categories().withTabGroup(groupId);
+						if (isMod && !addToGroupedMods) {
+							tabGroup.setCustomName(mod.getName());
+						}
 					}
 				}
+				tabGroup.withTab(tab);
 			}
-			tabGroup.withTab(tab);
+		}
+		sortRootEntries();
+	}
+
+	public static void ungroupSingleTabMods() {
+		if (CactiAPI.categories().hasTabGroup(MODS_TAB_GROUP)) {
+			CactiAPI.categories().removeEntry(MODS_TAB_GROUP);
+			Iterator<ModContainer> mods = creativeTabs.keySet().iterator();
+			while (mods.hasNext()) {
+				ModContainer mod = mods.next();
+				List<CreativeTabs> tabs = creativeTabs.get(mod);
+				if (tabs.size() == 1) {
+					CactiAPI.categories().removeEntry(mod.getModId());
+					CactiAPI.categories()
+						.withTabGroup(mod.getModId())
+						.withTab(tabs.get(0))
+						.setCustomName(mod.getName());
+				}
+			}
+		}
+		sortRootEntries();
+		reinitialize();
+	}
+
+	public static void groupSingleTabMods() {
+		Iterator<ModContainer> mods = creativeTabs.keySet().iterator();
+		while (mods.hasNext()) {
+			ModContainer mod = mods.next();
+			List<CreativeTabs> tabs = creativeTabs.get(mod);
+			if (tabs.size() == 1) {
+				CactiAPI.categories().removeEntry(mod.getModId());
+				CactiEntryTabGroup groupedMods = CactiAPI.categories().getTabGroup(MODS_TAB_GROUP);
+				if (groupedMods == null) {
+					groupedMods = CactiAPI.categories().withTabGroup(MODS_TAB_GROUP);
+				}
+				groupedMods.withTab(tabs.get(0));
+			}
+		}
+		sortRootEntries();
+		reinitialize();
+	}
+
+	private static void sortRootEntries() {
+		List<CactiEntry> entries = new ArrayList<>(CactiAPI.categories().getEntries());
+		CactiEntry minecraft = CactiAPI.categories().get(MINECRAFT_TAB_GROUP);
+		CactiEntry groupedMods = CactiAPI.categories().get(MODS_TAB_GROUP);
+		entries.remove(minecraft);
+		if (groupedMods != null) {
+			entries.remove(groupedMods);
+		}
+		Collections.sort(entries);
+		entries.add(0, minecraft);
+		if (groupedMods != null) {
+			entries.add(1, groupedMods);
+		}
+		CactiAPI.categories().clear();
+		for (CactiEntry entry : entries) {
+			CactiAPI.categories().addEntry(entry);
+		}
+	}
+
+	private static void reinitialize() {
+		if (Minecraft.getMinecraft().currentScreen instanceof GuiContainerCreative) {
+			initCurrent((GuiContainerCreative) Minecraft.getMinecraft().currentScreen);
 		}
 	}
 
@@ -187,19 +293,7 @@ public class Cacti {
 		gui.buttonList.add(pagePrevious);
 		gui.buttonList.add(pageNext);
 		initializeCapturedCreativeTabs();
-		int index = GuiContainerCreative.selectedTabIndex;
-		GuiContainerCreative.selectedTabIndex = -1;
-		CactiEntryTabGroup group = currentTabGroup;
-		setCurrentCategory(gui, currentCategory, categoryPage);
-		if (group != null) {
-			setCurrentTabGroup(gui, group);
-		}
-		if (index >= 0 && index < CreativeTabs.creativeTabArray.length) {
-			CreativeTabs tab = CreativeTabs.creativeTabArray[index];
-			if (tab != null) {
-				gui.setCurrentCreativeTab(tab);
-			}
-		}
+		initCurrent(gui);
 		String widgetsOwner = getCurrentResourceOwner(WIDGETS_TEX);
 		String tabsOwner = getCurrentResourceOwner(TABS_TEX);
 		String widgetsOwnerName = getName(widgetsOwner);
@@ -212,6 +306,22 @@ public class Cacti {
 			shouldUseButtonRibbonRender = false;
 		} else {
 			shouldUseButtonRibbonRender = !widgetsOwner.equals(tabsOwner);
+		}
+	}
+
+	private static void initCurrent(GuiContainerCreative gui) {
+		int index = GuiContainerCreative.selectedTabIndex;
+		GuiContainerCreative.selectedTabIndex = -1;
+		CactiEntryTabGroup group = currentTabGroup;
+		setCurrentCategory(gui, currentCategory, categoryPage);
+		if (group != null) {
+			setCurrentTabGroup(gui, group);
+		}
+		if (index >= 0 && index < CreativeTabs.creativeTabArray.length) {
+			CreativeTabs tab = CreativeTabs.creativeTabArray[index];
+			if (tab != null) {
+				gui.setCurrentCreativeTab(tab);
+			}
 		}
 	}
 

@@ -1,2 +1,5 @@
 categoryEntry.root=Root Categories
 categoryEntry.minecraft=Minecraft
+categoryEntry.mods=Grouped Mods
+
+cacti.config=Cacti Config

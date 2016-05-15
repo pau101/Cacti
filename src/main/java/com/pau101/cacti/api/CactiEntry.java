@@ -9,7 +9,7 @@ import net.minecraft.util.StatCollector;
 /**
  * A labeled entry representable in the creative inventory.
  */
-public abstract class CactiEntry {
+public abstract class CactiEntry implements Comparable<CactiEntry> {
 	/**
 	 * The unique identifier for this entry.
 	 */
@@ -107,6 +107,16 @@ public abstract class CactiEntry {
 			return StatCollector.translateToLocal(unlocalizedNameKey);
 		}
 		return customName;
+	}
+
+	/**
+	 * Compares two entries lexicographically by {@link #getDisplayName()}.
+	 *
+	 * @see java.lang.String#compareTo(String)
+	 */
+	@Override
+	public final int compareTo(CactiEntry other) {
+		return getDisplayName().compareTo(other.getDisplayName());
 	}
 
 	/**

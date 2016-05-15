@@ -34,6 +34,15 @@ public final class CactiEntryCategory extends CactiEntry {
 	}
 
 	/**
+	 * Returns the number of entries in this category.
+	 *
+	 * @return the number of entries in this category
+	 */
+	public int size() {
+		return entries.size();
+	}
+
+	/**
 	 * Provides an immutable copy of the entries
 	 * within this category.
 	 *
@@ -144,6 +153,31 @@ public final class CactiEntryCategory extends CactiEntry {
 	}
 
 	/**
+	 * Removes the entry associated with the specified id from this category.
+	 * Returns {@code true} if this category contaiend this specified entry.
+	 *
+	 * @param id the id whose associated entry is to be removed from this category
+	 * @return {@code true} if this catgory contained an entry associated with the
+	 *         specified unique identifier
+	 */
+	public boolean removeEntry(String id) {
+		CactiEntry entry = entryMap.remove(id);
+		if (entry == null) {
+			return false;
+		}
+		return entries.remove(entry);
+	}
+
+	/**
+	 * Removes all the entries this category contains. The category
+	 * will be empty after this call returns.
+	 */
+	public void clear() {
+		entries.clear();
+		entryMap.clear();
+	}
+
+	/**
 	 * Adds a new subcategory to this category with the specified unique indentifier.
 	 *
 	 * @param id the unique indentifier to construct the category with
@@ -173,5 +207,19 @@ public final class CactiEntryCategory extends CactiEntry {
 		entries.add(category);
 		entryMap.put(id, category);
 		return category;
+	}
+
+	/**
+	 * Adds the specified entry to this category.
+	 *
+	 * @param entry the entry to be added to this category
+	 * @throws IllegalArgumentException If this category already contains an entry with
+	 *         the specified entry's {@code id}
+	 */
+	public void addEntry(CactiEntry entry) {
+		Preconditions.checkNotNull(entry, "Entry must be non-null");
+		Preconditions.checkArgument(!entryMap.containsKey(entry.getId()), "The specified id is already present in this category: %s", entry.getId());
+		entries.add(entry);
+		entryMap.put(entry.getId(), entry);
 	}
 }
