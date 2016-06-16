@@ -14,20 +14,26 @@ public final class Configurator {
 
 	private static Configuration config;
 
-	private static boolean displayOnLeftSide;
+	private static DisplaySide displaySide;
 
 	private static boolean groupSingleTabMods;
+
+	private static boolean rememberLastTab;
 
 	public static Configuration config() {
 		return config;
 	}
 
-	public static boolean displayOnLeftSide() {
-		return displayOnLeftSide;
+	public static DisplaySide displaySide() {
+		return displaySide;
 	}
 
 	public static boolean groupSingleTabMods() {
 		return groupSingleTabMods;
+	}
+
+	public static boolean rememberLastTab() {
+		return rememberLastTab;
 	}
 
 	public static void init(FMLPreInitializationEvent event) {
@@ -37,12 +43,15 @@ public final class Configurator {
 	}
 
 	public static void update() {
-		displayOnLeftSide = config.getBoolean("Display On Left Side", Configuration.CATEGORY_GENERAL, true,
-			"When 'true' the entries will be displayed on the left of the creative inventory, otherwise the right."
-		);
+		displaySide = DisplaySide.fromString(config.getString("Display Side", Configuration.CATEGORY_GENERAL, DisplaySide.LEFT.toString(),
+			"Either 'left' or 'right' for what side the entries will display on.", new String[] { DisplaySide.LEFT.toString(), DisplaySide.RIGHT.toString() }
+		));
 		int gstmChange = groupSingleTabMods ? 1 : 0;
 		groupSingleTabMods = config.getBoolean("Group Single Tab Mods", Configuration.CATEGORY_GENERAL, false, 
 			"When 'true' all mods which contain a single tab will be put under one tab group."
+		);
+		rememberLastTab = config.getBoolean("Remember Last Tab", Configuration.CATEGORY_GENERAL, true, 
+			"When 'true' the current tab will be persistent between GUI opennings."
 		);
 		if (config.hasChanged()) {
 			config.save();
