@@ -359,8 +359,8 @@ public class Cacti {
 		if (group != null) {
 			setCurrentTabGroup(gui, group);
 		}
-		if (index >= 0 && index < CreativeTabs.creativeTabArray.length) {
-			CreativeTabs tab = CreativeTabs.creativeTabArray[index];
+		if (index >= 0 && index < CreativeTabs.CREATIVE_TAB_ARRAY.length) {
+			CreativeTabs tab = CreativeTabs.CREATIVE_TAB_ARRAY[index];
 			if (tab != null) {
 				gui.setCurrentCreativeTab(tab);
 			}
@@ -412,14 +412,14 @@ public class Cacti {
 		CreativeTabs[] tabsArray = new CreativeTabs[tabs.size()];
 		int len = 0;
 		for (CreativeTabs tab : tabs) {
-			if (tab == CreativeTabs.tabInventory || tab == CreativeTabs.tabAllSearch) {
+			if (tab == CreativeTabs.INVENTORY || tab == CreativeTabs.SEARCH) {
 				continue;
 			}
 			tabsArray[len++] = tab;
 		}
-		CreativeTabs[] arr = CreativeTabs.creativeTabArray = new CreativeTabs[Math.max(len + 2, 12)];
-		arr[CreativeTabs.tabAllSearch.tabIndex] = CreativeTabs.tabAllSearch;
-		arr[CreativeTabs.tabInventory.tabIndex] = CreativeTabs.tabInventory;
+		CreativeTabs[] arr = CreativeTabs.CREATIVE_TAB_ARRAY = new CreativeTabs[Math.max(len + 2, 12)];
+		arr[CreativeTabs.SEARCH.tabIndex] = CreativeTabs.SEARCH;
+		arr[CreativeTabs.INVENTORY.tabIndex] = CreativeTabs.INVENTORY;
 		for (int i = 0, idx = 0; i < len; idx++) {
 			if (arr[idx] == null) {
 				(arr[idx] = tabsArray[i++]).tabIndex = idx;
@@ -457,7 +457,7 @@ public class Cacti {
 		ReflectionHelper.setPrivateValue(GuiContainerCreative.class, gui, maxPages, "maxPages");
 		ReflectionHelper.setPrivateValue(GuiContainerCreative.class, null, 0, "tabPage");
 		if (tabs.isEmpty()) {
-			gui.setCurrentCreativeTab(CreativeTabs.tabInventory);
+			gui.setCurrentCreativeTab(CreativeTabs.INVENTORY);
 		} else {
 			gui.setCurrentCreativeTab(tabs.get(0));
 		}
@@ -756,7 +756,7 @@ public class Cacti {
 					continue;
 				}
 				GlStateManager.color(1, 1, 1);
-				gui.mc.getTextureManager().bindTexture(GuiContainer.inventoryBackground);
+				gui.mc.getTextureManager().bindTexture(GuiContainer.INVENTORY_BACKGROUND);
 				gui.drawTexturedModalRect(x, y, 0, texV, texSplitWidth, 32);
 				gui.drawTexturedModalRect(x + texSplitWidth, y, texWidth - texSplitWidth, texV, texSplitWidth, 32);
 				if (potion.hasStatusIcon()) {
