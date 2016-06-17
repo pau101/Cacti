@@ -63,7 +63,7 @@ javadoc {
 	include "com/pau101/cacti/api/*"
 	options.setLinksOffline([
 		createJavadocLink("http://java.sun.com/javase/7/docs/api/"),
-		createJavadocLink("http://docs.guava-libraries.googlecode.com/git/javadoc/")
+		createJavadocLink("http://google.github.io/guava/releases/snapshot/api/docs")
 	])
 	options.addStringOption("-subpackages com.pau101.cacti.api")
 }
