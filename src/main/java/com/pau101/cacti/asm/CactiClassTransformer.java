@@ -65,7 +65,6 @@ public class CactiClassTransformer implements IClassTransformer {
 					// remove Forge page logic
 					removeAfterUntil(insns, findFrom(mark, Opcodes.GETSTATIC), Opcodes.PUTFIELD);
 				}
-				
 			})
 			.with(new MethodTransformer("drawGuiContainerBackgroundLayer(FII)V") {
 				@Override
