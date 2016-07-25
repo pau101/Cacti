@@ -452,7 +452,7 @@ public class Cacti {
 			if (needNext) {
 				gui.buttonList.add(new GuiButton(nextId, gui.guiLeft + gui.xSize - 20, gui.guiTop - 50, 20, 20, ">"));
 			}
-			maxPages = ((arr.length - 12) / 10) + 1;
+			maxPages = (arr.length - 3) / 10;
 		} else {
 			Iterator<GuiButton> buttonIter = gui.buttonList.iterator();
 			while (buttonIter.hasNext()) {

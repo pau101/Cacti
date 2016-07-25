@@ -2,6 +2,7 @@ package com.pau101.cacti.asm;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 import net.minecraft.launchwrapper.IClassTransformer;
 
@@ -60,12 +61,9 @@ public class CactiClassTransformer implements IClassTransformer {
 					insns.insertBefore(bait, mark = new MethodInsnNode(Opcodes.INVOKESTATIC, CACTI, "initGui",
 						"(L" + GUI_CONTAINER_CREATIVE + ";)V", false));
 					// remove normal setCreativeTab
-					for (AbstractInsnNode n = bait; n != null; n = mark.getNext()) {
-						insns.remove(n);
-						if (n.getOpcode() == Opcodes.INVOKEVIRTUAL) {
-							break;
-						}
-					}
+					removeAfterUntil(insns, bait, Opcodes.INVOKEVIRTUAL);
+					// remove Forge page logic
+					removeAfterUntil(insns, findFrom(mark, Opcodes.GETSTATIC), Opcodes.PUTFIELD);
 				}
 			})
 			.with(new MethodTransformer("drawGuiContainerBackgroundLayer(FII)V") {
@@ -179,6 +177,15 @@ public class CactiClassTransformer implements IClassTransformer {
 		throw new RuntimeException("Failed to find expected opcode: " + opcode);
 	}
 
+	private <T extends AbstractInsnNode> T findFrom(AbstractInsnNode node, int opcode) {
+		for (; node != null; node = node.getNext()) {
+			if (node.getOpcode() == opcode) {
+				return (T) node;
+			}
+		}
+		throw new RuntimeException("Failed to find expected opcode: " + opcode);
+	}
+
 	private <T extends AbstractInsnNode> T findLast(InsnList insns, int opcode) {
 		for (int i = insns.size() - 1; i >= 0; i--) {
 			AbstractInsnNode insn = insns.get(i);
@@ -224,6 +231,18 @@ public class CactiClassTransformer implements IClassTransformer {
 			}
 		}
 		throw new RuntimeException("Failed to find expected type: " + type);
+	}
+
+	private void removeAfterUntil(InsnList insns, AbstractInsnNode node, int opcode) {
+		AbstractInsnNode head = node.getPrevious();
+		Supplier<AbstractInsnNode> incr = head == null ? () -> insns.get(0) : () -> head.getNext(); 
+		for (AbstractInsnNode n = node; n != null; n = incr.get()) {
+			insns.remove(n);
+			if (n.getOpcode() == opcode) {
+				return;
+			}
+		}
+		throw new RuntimeException("Failed to find end: " + opcode);
 	}
 
 	private class ClassTransformer {
