@@ -368,6 +368,7 @@ public class Cacti {
 			CreativeTabs tab = CreativeTabs.creativeTabArray[index];
 			if (tab != null) {
 				gui.setCurrentCreativeTab(tab);
+				setTabPage((index - 2) / 10);
 			}
 		}
 	}
@@ -466,12 +467,16 @@ public class Cacti {
 		}
 		// Can't AT a Forge patched member
 		ReflectionHelper.setPrivateValue(GuiContainerCreative.class, gui, maxPages, "maxPages");
-		ReflectionHelper.setPrivateValue(GuiContainerCreative.class, null, 0, "tabPage");
+		setTabPage(0);
 		if (tabs.isEmpty()) {
 			gui.setCurrentCreativeTab(CreativeTabs.tabInventory);
 		} else {
 			gui.setCurrentCreativeTab(tabs.get(0));
 		}
+	}
+
+	private static void setTabPage(int tabPage) {
+		ReflectionHelper.setPrivateValue(GuiContainerCreative.class, null, tabPage, "tabPage");
 	}
 
 	private static void updatePageEntries(GuiContainerCreative gui) {
