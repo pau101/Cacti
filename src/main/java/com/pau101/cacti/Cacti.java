@@ -1,7 +1,6 @@
 package com.pau101.cacti;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -27,7 +26,6 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.ForgeModContainer;
 import net.minecraftforge.fml.client.event.ConfigChangedEvent;
 import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.common.LoadController;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
@@ -37,7 +35,6 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ListMultimap;
 import com.pau101.cacti.api.CactiAPI;
 import com.pau101.cacti.api.CactiEntry;
 import com.pau101.cacti.api.CactiEntryCategory;
@@ -141,35 +138,39 @@ public class Cacti {
 	@HookInvoked(callerClass = CreativeTabs.class, callerMethods = "<init>(ILjava/lang/String;)V")
 	public static void initCreativeTab(CreativeTabs tab) {
 		ModContainer mod = null;
-		try {
-			// Just a bit of FML hackery to make our lives easier
-			Field modControllerField = Loader.class.getDeclaredField("modController");
-			Field packageOwnersField = LoadController.class.getDeclaredField("packageOwners");
-			modControllerField.setAccessible(true);
-			packageOwnersField.setAccessible(true);
-			LoadController controller = (LoadController) modControllerField.get(Loader.instance());
-			// Null if we're in vanilla bootstrap
-			if (controller != null) {
-				ListMultimap<String, ModContainer> packageOwners = (ListMultimap<String, ModContainer>) packageOwnersField.get(controller);
-				// If empty the CreativeTabs was probably created during FMLConstruction in <init> or <cinit>
-				if (packageOwners.size() > 0) {
-					String name = tab.getClass().getName();
-					int pkgIdx = name.lastIndexOf('.');
-					if (pkgIdx > -1) {
-						String pkg = name.substring(0, pkgIdx);
-						// I'm pretty sure it is guaranteed to have it at this point, just in case
-						if (packageOwners.containsKey(pkg)) {
-							mod = packageOwners.get(pkg).get(0);
-						}
-					}
-					// else the CreativeTabs is in the default package
-				}
-				// Either packageOwners is empty or the package is in default or unknown
-				if (mod == null) {
-					mod = Loader.instance().activeModContainer();
+		String name = tab.getClass().getName();
+		int pkgIdx = name.lastIndexOf('.');
+		if (pkgIdx > -1) {
+			String pkg = name.substring(0, pkgIdx);
+			List<ModContainer> owners = new ArrayList<>();
+			for (ModContainer container : Loader.instance().getModList()) {
+				if (container.getOwnedPackages().contains(pkg)) { 
+					owners.add(container);
 				}
 			}
-		} catch (Exception e) { /* Shhh... */ }
+			if (owners.size() == 1) {
+				mod = owners.get(0);
+			} else if (owners.size() > 1) {
+				String[] unfavorable = { "api", "lib", "util" };
+				owners.sort((m1, m2) -> {
+					String name1 = m1.getName().toLowerCase();
+					String name2 = m2.getName().toLowerCase();
+					for (String k : unfavorable) {
+						if (name1.contains(k)) {
+							return 1;
+						}
+						if (name2.contains(k)) {
+							return -1;
+						}
+					}
+					return 0;
+				});
+				mod = owners.get(0);
+			}
+		}
+		if (mod == null) {
+			mod = Loader.instance().activeModContainer();
+		}
 		List<CreativeTabs> tabs = capturedCreativeTabs.get(mod);
 		if (tabs == null) {
 			tabs = new ArrayList<CreativeTabs>();
