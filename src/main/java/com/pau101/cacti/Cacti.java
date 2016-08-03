@@ -346,7 +346,7 @@ public class Cacti {
 		if (widgetsOwner.isEmpty() || tabsOwner.isEmpty()) {
 			shouldUseButtonRibbonRender = true;
 		} else if (widgetsOwnerName.equals(Cacti.NAME) && (tabsOwnerName.equals(defaultPack) || tabsOwnerName.equals(devDefaultPack))) {
-			shouldUseButtonRibbonRender = true;
+			shouldUseButtonRibbonRender = false;
 		} else {
 			shouldUseButtonRibbonRender = !widgetsOwner.equals(tabsOwner);
 		}
