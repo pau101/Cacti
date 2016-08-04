@@ -624,6 +624,7 @@ public class Cacti {
 				gui.drawCreativeTabHoveringText(entry.getDisplayName(), mouseX, mouseY);
 			}
 		}
+		GlStateManager.disableLighting();
 	}
 
 	private static void renderEntryRibbonTiles(GuiContainer gui, List<CactiEntry> entries, CactiEntry selected, Pass pass) {
