@@ -676,10 +676,10 @@ public class Cacti {
 		}
 		int vOffset = isSelected ? 20 : 0;
 		width = width / 2 + 1;
-        gui.drawTexturedModalRect(x, y, 0, 46 + vOffset, width, 8);
-        gui.drawTexturedModalRect(x, y + 8, 0, 46 + vOffset + 13, width, 7);
-        gui.drawTexturedModalRect(x + width, y, 200 - width, 46 + vOffset, width, 8);
-        gui.drawTexturedModalRect(x + width, y + 8, 200 - width, 46 + vOffset + 13, width, 7);
+		gui.drawTexturedModalRect(x, y, 0, 46 + vOffset, width, 8);
+		gui.drawTexturedModalRect(x, y + 8, 0, 46 + vOffset + 13, width, 7);
+		gui.drawTexturedModalRect(x + width, y, 200 - width, 46 + vOffset, width, 8);
+		gui.drawTexturedModalRect(x + width, y + 8, 200 - width, 46 + vOffset + 13, width, 7);
 	}
 
 	private static void renderRegularRibbon(GuiContainer gui, boolean isSelected, Pass pass, FontRenderer font, String name, int width, int tiles, int offset, int x, int y) {
