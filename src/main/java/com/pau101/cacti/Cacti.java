@@ -122,13 +122,6 @@ public class Cacti {
 		Configurator.init(event);
 	}
 
-	public static int onPotionShift(InventoryEffectRenderer gui, int shift) {
-		if (Minecraft.getMinecraft().currentScreen instanceof GuiContainerCreative) {
-			return (gui.width - gui.xSize) / 2;
-		}
-		return shift;
-	}
-
 	@SubscribeEvent
 	public void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {
 		if (Cacti.MODID.equals(event.modID)) {
@@ -314,6 +307,9 @@ public class Cacti {
 
 	@HookInvoked(callerClass = GuiContainerCreative.class, callerMethods = "initGui()V")
 	public static void initGui(GuiContainerCreative gui) {
+		if (gui.mc.thePlayer.getActivePotionEffects().size() > 0) {
+			gui.guiLeft = (gui.width - gui.xSize) / 2;
+		}
 		int parentCategoryX, pagePreviousX, pageNextX;
 		if (Configurator.displaySide() == DisplaySide.LEFT) {
 			int left = gui.guiLeft - 5;
@@ -350,9 +346,6 @@ public class Cacti {
 			shouldUseButtonRibbonRender = false;
 		} else {
 			shouldUseButtonRibbonRender = !widgetsOwner.equals(tabsOwner);
-		}
-		if (!gui.mc.thePlayer.getActivePotionEffects().isEmpty()) {
-			gui.guiLeft = (gui.width - gui.xSize) / 2;
 		}
 	}
 
@@ -763,6 +756,8 @@ public class Cacti {
 		FontRenderer font = gui.mc.fontRenderer;
 		if (!collection.isEmpty()) {
 			GL11.glDisable(GL11.GL_LIGHTING);
+			GL11.glEnable(GL11.GL_BLEND);
+			GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 			int yStride = 33;
 			if (collection.size() > 5) {
 				yStride = 132 / (collection.size() - 1);
