@@ -1,10 +1,10 @@
 package com.pau101.cacti.api;
 
+import net.minecraft.client.resources.I18n;
+import net.minecraft.creativetab.CreativeTabs;
+
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
-
-import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.util.text.translation.I18n;
 
 /**
  * A labeled entry representable in the creative inventory.
@@ -35,7 +35,7 @@ public abstract class CactiEntry implements Comparable<CactiEntry> {
 	 * owner category.
 	 *
 	 * <p>
-	 * The {@link #unlocalizedNameKey} is set to: {@code "categoryEntry." + id}
+	 * The {@link #unlocalizedNameKey} is set to {@link #createUnlocalizedNameKey()}
 	 * </p>
 	 *
 	 * @param id the unique indentifier for this entry
@@ -46,7 +46,20 @@ public abstract class CactiEntry implements Comparable<CactiEntry> {
 		Preconditions.checkArgument(!Strings.isNullOrEmpty(id), "id must be non-null and not empty");
 		this.id = id;
 		this.owner = owner;
-		unlocalizedNameKey = "categoryEntry." + id;
+		unlocalizedNameKey = createUnlocalizedNameKey();
+	}
+
+	/**
+	 * Returns the unlocalized name key.
+	 *
+	 * The key is comprised of the concatenation of all the parent categories
+	 * and this entry's id with a joining character of ".", where the root
+	 * parent is {@link CactiAPI#categories()} with the id of "categoryEntry".
+	 *
+	 * @return
+	 */
+	protected final String createUnlocalizedNameKey() {
+		return owner == null ? getId() : (owner.createUnlocalizedNameKey() + "." + getId());
 	}
 
 	/**
@@ -71,7 +84,7 @@ public abstract class CactiEntry implements Comparable<CactiEntry> {
 	 * @throws IllegalArgumentException If {@code customName} is null
 	 */
 	public final void setCustomName(String customName) {
-		Preconditions.checkArgument(customName != null, "unlocalizedNameKey must be non-null");
+		Preconditions.checkArgument(customName != null, "customName must be non-null");
 		this.customName = customName;
 	}
 
@@ -104,7 +117,7 @@ public abstract class CactiEntry implements Comparable<CactiEntry> {
 	 */
 	public final String getDisplayName() {
 		if (customName == null) {
-			return I18n.translateToLocal(unlocalizedNameKey);
+			return I18n.format(unlocalizedNameKey);
 		}
 		return customName;
 	}
