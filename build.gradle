@@ -26,7 +26,7 @@ class Secrets {
 	def data = null
 
 	def getProperty(String key) {
-		return data ? data.getProperty(key) : ""
+		return data ? data[key] : ""
 	}
 }
 
@@ -115,11 +115,11 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
 
 tasks.build.dependsOn devJar, sourcesJar, javadocJar
 
-/*publishing {
+publishing {
 	publications {
 		mavenJava(MavenPublication) {
 			groupId project.groupId
-			artifactId project.artifact
+			artifactId project.artifactId
 			version "${project.version}-${project.minecraft.version}"
 			from components.java
 			artifact devJar {
@@ -147,9 +147,9 @@ tasks.build.dependsOn devJar, sourcesJar, javadocJar
 curseforge {
 	apiKey = secret.curseforgeAPIKey
 	project {
-		id = "??????"
+		id = "248552"
 		releaseType = "release"
-		changeLog = "Initial release"
+		changelog = "Initial release"
 		def versionPart = "Cacti $project.version"
 		mainArtifact(jar) {
 			displayName = versionPart
@@ -164,4 +164,4 @@ curseforge {
 			displayName = "$versionPart Javadoc"
 		}
 	}
-}*/
+}
