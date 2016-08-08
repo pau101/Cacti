@@ -40,8 +40,9 @@ if (secretFile.exists()) {
 
 ext.groupId = "com.pau101"
 ext.artifactId = "cacti"
+ext.modVersion = "1.0.0"
 
-version = "1.0.0"
+version = "${modVersion}-1.7.10"
 group = "${groupId}.${artifactId}"
 archivesBaseName = artifactId
 sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
@@ -54,7 +55,7 @@ minecraft {
 dependencies {}
 
 processResources {
-	inputs.property "version", project.version
+	inputs.property "version", project.modVersion
 	inputs.property "mcversion", project.minecraft.version
 	from(sourceSets.main.resources.srcDirs) {
 		include "mcmod.info"
@@ -75,7 +76,6 @@ ext.sharedManifest = manifest {
 }
 
 jar {
-	classifier = project.minecraft.version
 	manifest = project.manifest {
 		from sharedManifest
 	}
@@ -96,7 +96,7 @@ def createJavadocLink(String url) {
 }
 
 task devJar(type: Jar) {
-	classifier = "${project.minecraft.version}-dev"
+	classifier = "dev"
 	from sourceSets.main.output
 	manifest = project.manifest {
 		from sharedManifest
@@ -104,12 +104,12 @@ task devJar(type: Jar) {
 }
 
 task sourcesJar(type: Jar) {
-	classifier = "${project.minecraft.version}-sources"
+	classifier = "sources"
 	from sourceSets.main.allSource
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
-	classifier = "${project.minecraft.version}-javadoc"
+	classifier = "javadoc"
 	from javadoc.destinationDir
 }
 
@@ -120,7 +120,7 @@ publishing {
 		mavenJava(MavenPublication) {
 			groupId project.groupId
 			artifactId project.artifactId
-			version "${project.version}-${project.minecraft.version}"
+			version project.version
 			from components.java
 			artifact devJar {
 				classifier "dev"
@@ -150,7 +150,7 @@ curseforge {
 		id = "248552"
 		releaseType = "release"
 		changelog = "Initial release"
-		def versionPart = "Cacti $project.version"
+		def versionPart = "Cacti $project.modVersion"
 		mainArtifact(jar) {
 			displayName = versionPart
 		}
