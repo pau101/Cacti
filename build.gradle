@@ -1,3 +1,5 @@
+import groovy.json.JsonSlurper
+
 buildscript {
 	repositories {
 		jcenter()
@@ -5,17 +7,43 @@ buildscript {
 			name = "forge"
 			url = "http://files.minecraftforge.net/maven"
 		}
+		maven {
+			name = "gradle"
+			url "https://plugins.gradle.org/m2/"
+		}
 	}
 	dependencies {
 		classpath "net.minecraftforge.gradle:ForgeGradle:2.0-SNAPSHOT"
+		classpath "gradle.plugin.com.matthewprenger:CurseGradle:1.0.7"
 	}
 }
 
 apply plugin: "net.minecraftforge.gradle.forge"
+apply plugin: "maven-publish"
+apply plugin: "com.matthewprenger.cursegradle"
+
+class Secrets {
+	def data = null
+
+	def getProperty(String key) {
+		return data ? data.getProperty(key) : ""
+	}
+}
+
+def secretFile = file "../secret.json"
+project.ext.secret = new Secrets()
+if (secretFile.exists()) {
+	secretFile.withReader {
+		project.ext.secret.data = new JsonSlurper().parse it
+	}
+}
+
+ext.groupId = "com.pau101"
+ext.artifactId = "cacti"
 
 version = "1.0.0"
-group = "com.pau101.cacti"
-archivesBaseName = "cacti"
+group = "${groupId}.${artifactId}"
+archivesBaseName = artifactId
 sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
 
 minecraft {
@@ -43,24 +71,23 @@ ext.sharedManifest = manifest {
 	attributes(
 		"FMLAT": "cacti_at.cfg",
 		"FMLCorePlugin": "com.pau101.cacti.asm.CactiLoadingPlugin",
-		"FMLCorePluginContainsFMLMod": "true"
+		"FMLCorePluginContainsFMLMod": "true",
+		"ModSide": "CLIENT"
 	)
 }
 
 jar {
-	classifier = "${project.minecraft.version}"
-	manifest.mainAttributes(
-		"FMLAT": "cacti_at.cfg",
-		"FMLCorePlugin": "com.pau101.cacti.asm.CactiLoadingPlugin",
-		"FMLCorePluginContainsFMLMod": "true"
-	)
+	classifier = project.minecraft.version
+	manifest = project.manifest {
+		from sharedManifest
+	}
 	exclude "com/pau101/cacti/HookInvoked.class"
 }
 
 javadoc {
 	include "com/pau101/cacti/api/*"
 	options.setLinksOffline([
-		createJavadocLink("http://java.sun.com/javase/7/docs/api/"),
+		createJavadocLink("http://docs.oracle.com/javase/8/docs/api/"),
 		createJavadocLink("http://google.github.io/guava/releases/snapshot/api/docs")
 	])
 	options.addStringOption("-subpackages com.pau101.cacti.api")
@@ -70,32 +97,73 @@ def createJavadocLink(String url) {
 	return new JavadocOfflineLink(url, url);
 }
 
-task deobfJar(type: Jar) {
-	classifier = "${project.minecraft.version}-deobf"
+task devJar(type: Jar) {
+	classifier = "${project.minecraft.version}-dev"
 	from sourceSets.main.output
-	manifest.mainAttributes(
-		"FMLAT": "cacti_at.cfg",
-		"FMLCorePlugin": "com.pau101.cacti.asm.CactiLoadingPlugin",
-		"FMLCorePluginContainsFMLMod": "true"
-	)
-	exclude "com/pau101/cacti/HookInvoked.class"
+	manifest = project.manifest {
+		from sharedManifest
+	}
 }
 
-task apiJar(type: Jar) {
-	classifier = "${project.minecraft.version}-api"
-	from sourceSets.main.output
-	include "com/pau101/cacti/api/*"
-}
-
-task apiSourcesJar(type: Jar) {
-	classifier = "${project.minecraft.version}-api-sources"
+task sourcesJar(type: Jar) {
+	classifier = "${project.minecraft.version}-sources"
 	from sourceSets.main.allSource
-	include "com/pau101/cacti/api/*"
 }
 
-task apiJavadocJar(type: Jar, dependsOn: javadoc) {
-	classifier = "${project.minecraft.version}-api-javadoc"
+task javadocJar(type: Jar, dependsOn: javadoc) {
+	classifier = "${project.minecraft.version}-javadoc"
 	from javadoc.destinationDir
 }
 
-tasks.build.dependsOn deobfJar, apiJar, apiSourcesJar, apiJavadocJar
+tasks.build.dependsOn devJar, sourcesJar, javadocJar
+
+/*publishing {
+	publications {
+		mavenJava(MavenPublication) {
+			groupId project.groupId
+			artifactId project.artifact
+			version "${project.version}-${project.minecraft.version}"
+			from components.java
+			artifact devJar {
+				classifier "dev"
+			}
+			artifact sourcesJar {
+				classifier "sources"
+			}
+			artifact javadocJar {
+				classifier "javadoc"
+			}
+		}
+	}
+	repositories {
+		maven {
+			credentials {
+				username secret.username
+				password secret.password
+			}
+			url secret.url
+		}
+	}
+}
+
+curseforge {
+	apiKey = secret.curseforgeAPIKey
+	project {
+		id = "??????"
+		releaseType = "release"
+		changeLog = "Initial release"
+		def versionPart = "Cacti $project.version"
+		mainArtifact(jar) {
+			displayName = versionPart
+		}
+		addArtifact(devJar) {
+			displayName = "$versionPart Development"
+		}
+		addArtifact(sourcesJar) {
+			displayName = "$versionPart Sources"
+		}
+		addArtifact(javadocJar) {
+			displayName = "$versionPart Javadoc"
+		}
+	}
+}*/
