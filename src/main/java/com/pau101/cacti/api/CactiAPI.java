@@ -13,7 +13,7 @@ public final class CactiAPI {
 	/**
 	 * The root categories instance.
 	 */
-	private static final CactiEntryCategory CATEGORIES = new CactiEntryCategory("root", null)
+	private static final CactiEntryCategory CATEGORIES = new CactiEntryCategory("categoryEntry", null)
 		.withTabGroup("minecraft")
 		.end();
 
