@@ -2,6 +2,7 @@ package com.pau101.cacti.asm;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import net.minecraft.launchwrapper.IClassTransformer;
@@ -61,7 +62,7 @@ public class CactiClassTransformer implements IClassTransformer {
 					insns.insertBefore(bait, mark = new MethodInsnNode(Opcodes.INVOKESTATIC, CACTI, "initGui",
 						"(L" + GUI_CONTAINER_CREATIVE + ";)V", false));
 					// remove normal setCreativeTab
-					removeAfterUntil(insns, bait, Opcodes.INVOKEVIRTUAL);
+					removeAfterUntilType(insns, bait, AbstractInsnNode.METHOD_INSN);
 					// remove Forge page logic
 					removeAfterUntil(insns, findFrom(mark, Opcodes.GETSTATIC), Opcodes.PUTFIELD);
 				}
@@ -244,15 +245,23 @@ public class CactiClassTransformer implements IClassTransformer {
 	}
 
 	private void removeAfterUntil(InsnList insns, AbstractInsnNode node, int opcode) {
+		removeAfterUntil(insns, node, n -> n.getOpcode() == opcode);
+	}
+
+	private void removeAfterUntilType(InsnList insns, AbstractInsnNode node, int type) {
+		removeAfterUntil(insns, node, n -> n.getType() == type);
+	}
+
+	private void removeAfterUntil(InsnList insns, AbstractInsnNode node, Predicate<AbstractInsnNode> predicate) {
 		AbstractInsnNode head = node.getPrevious();
 		Supplier<AbstractInsnNode> incr = head == null ? () -> insns.get(0) : () -> head.getNext(); 
 		for (AbstractInsnNode n = node; n != null; n = incr.get()) {
 			insns.remove(n);
-			if (n.getOpcode() == opcode) {
+			if (predicate.test(n)) {
 				return;
 			}
 		}
-		throw new RuntimeException("Failed to find end: " + opcode);
+		throw new RuntimeException("Failed to find end");
 	}
 
 	private class ClassTransformer {
