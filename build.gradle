@@ -40,7 +40,7 @@ if (secretFile.exists()) {
 
 ext.groupId = "com.pau101"
 ext.artifactId = "cacti"
-ext.modVersion = "1.0.0"
+ext.modVersion = "1.0.1"
 
 version = "${modVersion}-1.8"
 group = "${groupId}.${artifactId}"
