@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import net.minecraft.client.Minecraft;
@@ -147,8 +148,8 @@ public class Cacti {
 			} else if (owners.size() > 1) {
 				String[] unfavorable = { "api", "lib", "util" };
 				owners.sort((m1, m2) -> {
-					String name1 = m1.getName().toLowerCase();
-					String name2 = m2.getName().toLowerCase();
+					String name1 = m1.getName().toLowerCase(Locale.ROOT);
+					String name2 = m2.getName().toLowerCase(Locale.ROOT);
 					for (String k : unfavorable) {
 						if (name1.contains(k)) {
 							return 1;
