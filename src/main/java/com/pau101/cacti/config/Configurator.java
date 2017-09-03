@@ -5,7 +5,7 @@ import java.io.File;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 
-import com.pau101.cacti.Cacti;
+import com.pau101.cacti.gui.GuiContainerCactiCreative;
 
 public final class Configurator {
 	private Configurator() {}
@@ -57,9 +57,9 @@ public final class Configurator {
 			config.save();
 			gstmChange |= groupSingleTabMods ? 2 : 0;
 			if (gstmChange == 0b01) {
-				Cacti.ungroupSingleTabMods();
+				GuiContainerCactiCreative.ungroupSingleTabMods();
 			} else if (gstmChange == 0b10) {
-				Cacti.groupSingleTabMods();
+				GuiContainerCactiCreative.groupSingleTabMods();
 			}
 		}
 	}

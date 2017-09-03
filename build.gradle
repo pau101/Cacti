@@ -42,15 +42,15 @@ ext.groupId = "com.pau101"
 ext.artifactId = "cacti"
 ext.modVersion = "1.0.1"
 
-version = "${modVersion}-1.10.2"
+version = "${modVersion}-1.11"
 group = "${groupId}.${artifactId}"
 archivesBaseName = artifactId
 sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
 
 minecraft {
-	version = "1.10.2-12.18.1.2026"
+	version = "1.11-13.19.1.2199"
 	runDir = "run"
-	mappings = "snapshot_20160518"
+	mappings = "snapshot_20161220"
 	makeObfSourceJar = false
 }
 
@@ -71,8 +71,6 @@ processResources {
 ext.sharedManifest = manifest {
 	attributes(
 		"FMLAT": "cacti_at.cfg",
-		"FMLCorePlugin": "com.pau101.cacti.asm.CactiLoadingPlugin",
-		"FMLCorePluginContainsFMLMod": "true",
 		"ModSide": "CLIENT"
 	)
 }
@@ -81,7 +79,6 @@ jar {
 	manifest = project.manifest {
 		from sharedManifest
 	}
-	exclude "com/pau101/cacti/HookInvoked.class"
 }
 
 javadoc {
