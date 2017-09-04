@@ -2,13 +2,11 @@ package com.pau101.cacti;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.inventory.GuiContainerCreative;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.client.event.ConfigChangedEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
-import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
@@ -34,15 +32,6 @@ public class Cacti {
 	public void init(FMLPreInitializationEvent event) {
 		MinecraftForge.EVENT_BUS.register(this);
 		Configurator.init(event);
-	}
-
-	@EventHandler
-	public void init(FMLPostInitializationEvent event) {
-		for (CreativeTabs tab : CreativeTabs.CREATIVE_TAB_ARRAY) {
-			if (tab != null) {
-				GuiContainerCactiCreative.initCreativeTab(tab);
-			}
-		}
 	}
 
 	@SubscribeEvent

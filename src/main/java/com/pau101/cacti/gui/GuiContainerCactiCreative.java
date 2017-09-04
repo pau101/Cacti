@@ -6,11 +6,8 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.function.BiConsumer;
 
 import net.minecraft.client.Minecraft;
@@ -33,7 +30,10 @@ import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.ModContainer;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
 import com.pau101.cacti.Cacti;
 import com.pau101.cacti.api.CactiAPI;
@@ -76,9 +76,7 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 
 	private static boolean shouldUseButtonRibbonRender;
 
-	private static Map<ModContainer, List<CreativeTabs>> capturedCreativeTabs = new HashMap<>();
-
-	private static Map<ModContainer, List<CreativeTabs>> creativeTabs = new HashMap<>();
+	private static Multimap<ModContainer, CreativeTabs> creativeTabs = HashMultimap.create();
 
 	private static CactiEntryCategory currentCategory = CactiAPI.categories();
 
@@ -122,46 +120,6 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 		init();
 	}
 
-	private void init() {
-		int parentCategoryX, pagePreviousX, pageNextX;
-		if (Configurator.displaySide() == DisplaySide.LEFT) {
-			int left = guiLeft - 5;
-			pagePreviousX = parentCategoryX = left - LEFT_BUTTON_WIDTH;
-			pageNextX = left - 20;
-		} else {
-			int right = guiLeft + xSize + 5;
-			pagePreviousX = parentCategoryX = right;
-			pageNextX = right + LEFT_BUTTON_WIDTH - 20;
-		}
-		parentCategory = new GuiButton(BUTTON_ID_PARENT_CATEGORY, parentCategoryX, guiTop - 22, LEFT_BUTTON_WIDTH, 20, "");
-		pagePrevious = new GuiButton(BUTTON_ID_PAGE_PREVIOUS, pagePreviousX, guiTop + ySize + 1, 20, 20, "<");
-		pageNext = new GuiButton(BUTTON_ID_PAGE_NEXT, pageNextX, guiTop + ySize + 1, 20, 20, ">");
-		buttonList.add(parentCategory);
-		buttonList.add(pagePrevious);
-		buttonList.add(pageNext);
-		initializeCapturedCreativeTabs();
-		if (!Configurator.rememberLastTab()) {
-			GuiContainerCreative.selectedTabIndex = 0;
-			currentCategory = CactiAPI.categories();
-			currentTabGroup = null;
-			categoryPage = 0;
-		}
-		initCurrent();
-		String widgetsOwner = getCurrentResourceOwner(WIDGETS_TEX);
-		String tabsOwner = getCurrentResourceOwner(TABS_TEX);
-		String widgetsOwnerName = getName(widgetsOwner);
-		String tabsOwnerName = getName(tabsOwner);
-		String defaultPack = Minecraft.getMinecraft().mcDefaultResourcePack.getPackName();
-		String devDefaultPack = ForgeModContainer.getInstance().getName();
-		if (widgetsOwner.isEmpty() || tabsOwner.isEmpty()) {
-			shouldUseButtonRibbonRender = true;
-		} else if (widgetsOwnerName.equals(Cacti.NAME) && (tabsOwnerName.equals(defaultPack) || tabsOwnerName.equals(devDefaultPack))) {
-			shouldUseButtonRibbonRender = false;
-		} else {
-			shouldUseButtonRibbonRender = !widgetsOwner.equals(tabsOwner);
-		}
-	}
-
 	@Override
 	protected void updateActivePotionEffects() {
 		boolean hasVisibleEffect = false;
@@ -187,7 +145,7 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 	protected void drawGuiContainerBackgroundLayer(float delta, int mouseX, int mouseY) {
 		GlStateManager.color(1, 1, 1);
 		RenderHelper.enableGUIStandardItemLighting();
-		drawBackground(delta, mouseX, mouseY);
+		drawBackground();
 		super.drawGuiContainerBackgroundLayer(delta, mouseX, mouseY);
 	}
 
@@ -204,15 +162,6 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 			super.mouseClicked(mouseX, mouseY, mouseButton);
 		} finally {
 			replaceTabs(NullCreativeTab.INSTANCE, null);
-		}
-	}
-
-	private static void replaceTabs(CreativeTabs replacee, CreativeTabs replacement) {
-		CreativeTabs[] tabs = CreativeTabs.CREATIVE_TAB_ARRAY;
-		for (int i = 0; i < tabs.length; i++) {
-			if (tabs[i] == replacee) {
-				tabs[i] = replacement;
-			}
 		}
 	}
 
@@ -302,61 +251,49 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 		}
 	}
 
-	public static void initCreativeTab(CreativeTabs tab) {
-		ModContainer mod = null;
-		String name = tab.getClass().getName();
-		int pkgIdx = name.lastIndexOf('.');
-		if (pkgIdx > -1) {
-			String pkg = name.substring(0, pkgIdx);
-			List<ModContainer> owners = new ArrayList<>();
-			for (ModContainer container : Loader.instance().getModList()) {
-				if (container.getOwnedPackages().contains(pkg)) {
-					owners.add(container);
-				}
-			}
-			if (owners.size() == 1) {
-				mod = owners.get(0);
-			} else if (owners.size() > 1) {
-				String[] unfavorable = { "api", "lib", "util" };
-				owners.sort((m1, m2) -> {
-					String name1 = m1.getName().toLowerCase(Locale.ROOT);
-					String name2 = m2.getName().toLowerCase(Locale.ROOT);
-					for (String k : unfavorable) {
-						if (name1.contains(k)) {
-							return 1;
-						}
-						if (name2.contains(k)) {
-							return -1;
-						}
-					}
-					return 0;
-				});
-				mod = owners.get(0);
-			}
+	private void init() {
+		int parentCategoryX, pagePreviousX, pageNextX;
+		if (Configurator.displaySide() == DisplaySide.LEFT) {
+			int left = guiLeft - 5;
+			pagePreviousX = parentCategoryX = left - LEFT_BUTTON_WIDTH;
+			pageNextX = left - 20;
+		} else {
+			int right = guiLeft + xSize + 5;
+			pagePreviousX = parentCategoryX = right;
+			pageNextX = right + LEFT_BUTTON_WIDTH - 20;
 		}
-		if (mod == null) {
-			mod = Loader.instance().getMinecraftModContainer();
+		parentCategory = new GuiButton(BUTTON_ID_PARENT_CATEGORY, parentCategoryX, guiTop - 22, LEFT_BUTTON_WIDTH, 20, "");
+		pagePrevious = new GuiButton(BUTTON_ID_PAGE_PREVIOUS, pagePreviousX, guiTop + ySize + 1, 20, 20, "<");
+		pageNext = new GuiButton(BUTTON_ID_PAGE_NEXT, pageNextX, guiTop + ySize + 1, 20, 20, ">");
+		buttonList.add(parentCategory);
+		buttonList.add(pagePrevious);
+		buttonList.add(pageNext);
+		initializeCreativeTabs();
+		if (!Configurator.rememberLastTab()) {
+			selectedTabIndex = 0;
+			currentCategory = CactiAPI.categories();
+			currentTabGroup = null;
+			categoryPage = 0;
 		}
-		List<CreativeTabs> tabs = capturedCreativeTabs.get(mod);
-		if (tabs == null) {
-			tabs = new ArrayList<>();
-			capturedCreativeTabs.put(mod, tabs);
-		}
-		tabs.add(tab);
+		updateSelected();
+		String widgetsOwner = getResourceOwner(WIDGETS_TEX);
+		String tabsOwner = getResourceOwner(TABS_TEX);
+		String widgetsOwnerName = getName(widgetsOwner);
+		String tabsOwnerName = getName(tabsOwner);
+		String defaultPack = Minecraft.getMinecraft().mcDefaultResourcePack.getPackName();
+		String devDefaultPack = ForgeModContainer.getInstance().getName();
+		shouldUseButtonRibbonRender = widgetsOwner.isEmpty() || tabsOwner.isEmpty() || !(widgetsOwnerName.equals(Cacti.NAME) && (tabsOwnerName.equals(defaultPack) || tabsOwnerName.equals(devDefaultPack))) && !widgetsOwner.equals(tabsOwner);
 	}
 
-	private void initializeCapturedCreativeTabs() {
-		Iterator<ModContainer> mods = capturedCreativeTabs.keySet().iterator();
-		while (mods.hasNext()) {
-			ModContainer mod = mods.next();
-			List<CreativeTabs> tabs = capturedCreativeTabs.get(mod);
-			mods.remove();
-			List<CreativeTabs> existingTabs = creativeTabs.get(mod);
-			if (existingTabs == null) {
-				existingTabs = new ArrayList<>();
-				creativeTabs.put(mod, existingTabs);
+	private void initializeCreativeTabs() {
+		creativeTabs.clear();
+		for (CreativeTabs tab : CreativeTabs.CREATIVE_TAB_ARRAY) {
+			if (tab != null) {
+				creativeTabs.put(getOwner(tab), tab);
 			}
-			existingTabs.addAll(tabs);
+		}
+		for (ModContainer mod : creativeTabs.keySet()) {
+			Collection<CreativeTabs> tabs = creativeTabs.get(mod);
 			boolean addToGroupedMods = tabs.size() == 1 && Configurator.groupSingleTabMods();
 			for (CreativeTabs tab : tabs) {
 				if (CactiAPI.categories().contains(tab)) {
@@ -388,98 +325,9 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 		sortRootEntries();
 	}
 
-	public static void ungroupSingleTabMods() {
-		boolean checkAdjustTab = currentTabGroup != null && currentTabGroup.getId().equals(MODS_TAB_GROUP);
-		if (CactiAPI.categories().hasTabGroup(MODS_TAB_GROUP)) {
-			CactiAPI.categories().removeEntry(MODS_TAB_GROUP);
-			Iterator<ModContainer> mods = creativeTabs.keySet().iterator();
-			while (mods.hasNext()) {
-				ModContainer mod = mods.next();
-				List<CreativeTabs> tabs = creativeTabs.get(mod);
-				if (tabs.size() == 1) {
-					CreativeTabs tab = tabs.get(0);
-					CactiAPI.categories().removeEntry(mod.getModId());
-					CactiEntryTabGroup modTab = CactiAPI.categories()
-						.withTabGroup(mod.getModId())
-						.withTab(tab);
-					modTab.setCustomName(mod.getName());
-					if (checkAdjustTab && tab.tabIndex == GuiContainerCreative.selectedTabIndex) {
-						currentTabGroup = modTab;
-						currentCategory = CactiAPI.categories();
-						GuiContainerCreative.selectedTabIndex = 0;
-						checkAdjustTab = false;
-					}
-				}
-			}
-		}
-		sortRootEntries();
-		reinitialize();
-	}
-
-	public static void groupSingleTabMods() {
-		boolean checkAdjustTab = true;
-		Iterator<ModContainer> mods = creativeTabs.keySet().iterator();
-		while (mods.hasNext()) {
-			ModContainer mod = mods.next();
-			List<CreativeTabs> tabs = creativeTabs.get(mod);
-			if (tabs.size() == 1) {
-				CactiAPI.categories().removeEntry(mod.getModId());
-				CactiEntryTabGroup groupedMods = CactiAPI.categories().getTabGroup(MODS_TAB_GROUP);
-				if (groupedMods == null) {
-					groupedMods = CactiAPI.categories().withTabGroup(MODS_TAB_GROUP);
-				}
-				if (checkAdjustTab && currentTabGroup.getId().equals(mod.getModId())) {
-					currentTabGroup = groupedMods;
-					currentCategory = CactiAPI.categories();
-					int tabId = groupedMods.size();
-					// skip over search
-					if (groupedMods.size() > 4) {
-						tabId++;
-					}
-					// skip over inventory
-					if (groupedMods.size() > 10) {
-						tabId++;
-					}
-					GuiContainerCreative.selectedTabIndex = tabId;
-					checkAdjustTab = false;
-				}
-				groupedMods.withTab(tabs.get(0));
-			}
-		}
-		sortRootEntries();
-		reinitialize();
-	}
-
-	private static void sortRootEntries() {
-		List<CactiEntry> entries = new ArrayList<>(CactiAPI.categories().getEntries());
-		CactiEntry minecraft = CactiAPI.categories().get(MINECRAFT_TAB_GROUP);
-		CactiEntry groupedMods = CactiAPI.categories().get(MODS_TAB_GROUP);
-		entries.remove(minecraft);
-		if (groupedMods != null) {
-			entries.remove(groupedMods);
-		}
-		Collections.sort(entries);
-		entries.add(0, minecraft);
-		if (groupedMods != null) {
-			entries.add(1, groupedMods);
-		}
-		CactiAPI.categories().clear();
-		for (CactiEntry entry : entries) {
-			CactiAPI.categories().addEntry(entry);
-		}
-	}
-
-	private static void reinitialize() {
-		categoryPage = currentCategory.getEntries().indexOf(currentTabGroup) / ENTRIES_PER_PAGE;
-		GuiScreen gui = Minecraft.getMinecraft().currentScreen;
-		if (gui instanceof GuiContainerCactiCreative) {
-			((GuiContainerCactiCreative) gui).initCurrent();
-		}
-	}
-
-	private void initCurrent() {
-		int index = GuiContainerCreative.selectedTabIndex;
-		GuiContainerCreative.selectedTabIndex = -1;
+	private void updateSelected() {
+		int index = selectedTabIndex;
+		selectedTabIndex = -1;
 		CactiEntryTabGroup group = currentTabGroup;
 		setCurrentCategory(currentCategory, categoryPage);
 		if (group != null) {
@@ -492,19 +340,6 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 				setTabPage((index - 2) / 10);
 			}
 		}
-	}
-
-	private static String getCurrentResourceOwner(ResourceLocation location) {
-		try {
-			return Minecraft.getMinecraft().getResourceManager().getResource(location).getResourcePackName();
-		} catch (IOException e) {
-			// noop
-		}
-		return "";
-	}
-
-	private static String getName(String str) {
-		return str.substring(str.indexOf(':') + 1);
 	}
 
 	private void setCurrentEntry(CactiEntry entry) {
@@ -570,22 +405,16 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 			}
 			maxPages = (arr.length - 3) / 10;
 		} else {
-			Iterator<GuiButton> buttonIter = buttonList.iterator();
-			while (buttonIter.hasNext()) {
-				GuiButton button = buttonIter.next();
-				if (button.id == prevId || button.id == nextId) {
-					buttonIter.remove();
-				}
-			}
+			buttonList.removeIf(button -> button.id == prevId || button.id == nextId);
 			maxPages = 0;
 		}
-		ReflectionHelper.setPrivateValue(GuiContainerCreative.class, this, maxPages, "maxPages");
+		setMaxPages(maxPages);
 		setTabPage(0);
-		if (tabs.isEmpty()) {
-			setCurrentCreativeTab(CreativeTabs.INVENTORY);
-		} else {
-			setCurrentCreativeTab(tabs.get(0));
-		}
+		setCurrentCreativeTab(Iterables.getFirst(tabs, CreativeTabs.INVENTORY));
+	}
+
+	private void setMaxPages(int maxPages) {
+		ReflectionHelper.setPrivateValue(GuiContainerCreative.class, this, maxPages, "maxPages");
 	}
 
 	private void setTabPage(int tabPage) {
@@ -664,12 +493,8 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 		return null;
 	}
 
-	private enum Pass {
-		BACKGROUND, TEXT
-	}
-
-	private void drawBackground(float delta, int mouseX, int mouseY) {
-		if (currentPageEntries.size() == 0) {
+	private void drawBackground() {
+		if (currentPageEntries.isEmpty()) {
 			return;
 		}
 		GlStateManager.disableLighting();
@@ -732,28 +557,17 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 			// ceil tiles
 			int tiles = (width - RIBBON_TILE_SIZE + (RIBBON_TILE_SIZE + 1)) / RIBBON_TILE_SIZE;
 			int offset = (width + 1) % RIBBON_TILE_SIZE;
-			int x;
-			if (Configurator.displaySide() == DisplaySide.LEFT) {
-				x = guiLeft - RIBBON_TILE_SIZE - offset + RIBBON_X_OFFSET;
-			} else {
-				x = guiLeft + xSize - RIBBON_TILE_SIZE * 2 + offset + RIBBON_X_OFFSET;
-			}
 			int y = guiTop + RIBBON_START_Y_OFFSET + RIBBON_HEIGHT * i;
 			boolean isSelected = entry == selected;
 			if (shouldUseButtonRibbonRender) {
-				renderButtonRibbon(isSelected, pass, font, name, width, x, y);
+				renderButtonRibbon(isSelected, pass, font, name, width, y);
 			} else {
-				renderRegularRibbon(isSelected, pass, font, name, width, tiles, offset, x, y);
+				renderRegularRibbon(isSelected, pass, font, name, width, tiles, offset, y);
 			}
 		}
 	}
 
-	private static int getAvailableEntryWidth(FontRenderer font, int rightSpace, String name) {
-		int width = font.getStringWidth(name) + 5;
-		return Math.max(10, width - Math.max(0, width - rightSpace));
-	}
-
-	private void renderButtonRibbon(boolean isSelected, Pass pass, FontRenderer font, String name, int width, int x, int y) {
+	private void renderButtonRibbon(boolean isSelected, Pass pass, FontRenderer font, String name, int width, int y) {
 		width -= 1;
 		if (pass == Pass.TEXT) {
 			if (Configurator.displaySide() == DisplaySide.LEFT) {
@@ -763,6 +577,7 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 			}
 			return;
 		}
+		int x;
 		if (Configurator.displaySide() == DisplaySide.LEFT) {
 			x = guiLeft - width - 4 + width % 2;
 		} else {
@@ -776,7 +591,7 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 		drawTexturedModalRect(x + width, y + 8, 200 - width, 46 + vOffset + 13, width, 7);
 	}
 
-	private void renderRegularRibbon(boolean isSelected, Pass pass, FontRenderer font, String name, int width, int tiles, int offset, int x, int y) {
+	private void renderRegularRibbon(boolean isSelected, Pass pass, FontRenderer font, String name, int width, int tiles, int offset, int y) {
 		if (pass == Pass.TEXT) {
 			if (Configurator.displaySide() == DisplaySide.LEFT) {
 				font.drawString(name, guiLeft - width + 4, y + 5, 0x404040);
@@ -805,6 +620,12 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 				drawTexturedModalRect(guiLeft + xSize, y, 34, v, RIBBON_TILE_SIZE, RIBBON_TILE_SIZE);
 			}
 		}
+		int x;
+		if (Configurator.displaySide() == DisplaySide.LEFT) {
+			x = guiLeft - RIBBON_TILE_SIZE - offset + RIBBON_X_OFFSET;
+		} else {
+			x = guiLeft + xSize - RIBBON_TILE_SIZE * 2 + offset + RIBBON_X_OFFSET;
+		}
 		for (int t = 1, lastTile = tiles - 1;; t++) {
 			int w = t == 1 ? offset : RIBBON_TILE_SIZE;
 			if (lastTile > 0) {
@@ -824,6 +645,156 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 				break;
 			}
 		}
+	}
+
+	private static void replaceTabs(CreativeTabs replacee, CreativeTabs replacement) {
+		CreativeTabs[] tabs = CreativeTabs.CREATIVE_TAB_ARRAY;
+		for (int i = 0; i < tabs.length; i++) {
+			if (tabs[i] == replacee) {
+				tabs[i] = replacement;
+			}
+		}
+	}
+
+	private static ModContainer getOwner(CreativeTabs tab) {
+		ModContainer mod = null;
+		String name = tab.getClass().getName();
+		int pkgIdx = name.lastIndexOf('.');
+		if (pkgIdx > -1) {
+			String pkg = name.substring(0, pkgIdx);
+			List<ModContainer> owners = new ArrayList<>();
+			for (ModContainer container : Loader.instance().getModList()) {
+				if (container.getOwnedPackages().contains(pkg)) {
+					owners.add(container);
+				}
+			}
+			if (owners.size() == 1) {
+				mod = owners.get(0);
+			} else if (owners.size() > 1) {
+				String[] unfavorable = { "api", "lib", "util" };
+				owners.sort((m1, m2) -> {
+					String name1 = m1.getName().toLowerCase(Locale.ROOT);
+					String name2 = m2.getName().toLowerCase(Locale.ROOT);
+					for (String k : unfavorable) {
+						if (name1.contains(k)) {
+							return 1;
+						}
+						if (name2.contains(k)) {
+							return -1;
+						}
+					}
+					return 0;
+				});
+				mod = owners.get(0);
+			}
+		}
+		if (mod == null) {
+			mod = Loader.instance().getMinecraftModContainer();
+		}
+		return mod;
+	}
+
+	public static void ungroupSingleTabMods() {
+		boolean checkAdjustTab = currentTabGroup != null && currentTabGroup.getId().equals(MODS_TAB_GROUP);
+		if (CactiAPI.categories().hasTabGroup(MODS_TAB_GROUP)) {
+			CactiAPI.categories().removeEntry(MODS_TAB_GROUP);
+			for (ModContainer mod : creativeTabs.keySet()) {
+				Collection<CreativeTabs> tabs = creativeTabs.get(mod);
+				if (tabs.size() == 1) {
+					CreativeTabs tab = Iterables.getOnlyElement(tabs);
+					CactiAPI.categories().removeEntry(mod.getModId());
+					CactiEntryTabGroup modTab = CactiAPI.categories()
+						.withTabGroup(mod.getModId())
+						.withTab(tab);
+					modTab.setCustomName(mod.getName());
+					if (checkAdjustTab && tab.tabIndex == selectedTabIndex) {
+						currentTabGroup = modTab;
+						currentCategory = CactiAPI.categories();
+						selectedTabIndex = 0;
+						checkAdjustTab = false;
+					}
+				}
+			}
+		}
+		sortRootEntries();
+		reinitialize();
+	}
+
+	public static void groupSingleTabMods() {
+		boolean checkAdjustTab = true;
+		for (ModContainer mod : creativeTabs.keySet()) {
+			Collection<CreativeTabs> tabs = creativeTabs.get(mod);
+			if (tabs.size() == 1) {
+				CactiAPI.categories().removeEntry(mod.getModId());
+				CactiEntryTabGroup groupedMods = CactiAPI.categories().getTabGroup(MODS_TAB_GROUP);
+				if (groupedMods == null) {
+					groupedMods = CactiAPI.categories().withTabGroup(MODS_TAB_GROUP);
+				}
+				if (checkAdjustTab && currentTabGroup.getId().equals(mod.getModId())) {
+					currentTabGroup = groupedMods;
+					currentCategory = CactiAPI.categories();
+					int tabId = groupedMods.size();
+					// skip over search
+					if (groupedMods.size() > 4) {
+						tabId++;
+					}
+					// skip over inventory
+					if (groupedMods.size() > 10) {
+						tabId++;
+					}
+					selectedTabIndex = tabId;
+					checkAdjustTab = false;
+				}
+				groupedMods.withTab(Iterables.getOnlyElement(tabs));
+			}
+		}
+		sortRootEntries();
+		reinitialize();
+	}
+
+	private static void sortRootEntries() {
+		List<CactiEntry> entries = new ArrayList<>(CactiAPI.categories().getEntries());
+		CactiEntry minecraft = CactiAPI.categories().get(MINECRAFT_TAB_GROUP);
+		CactiEntry groupedMods = CactiAPI.categories().get(MODS_TAB_GROUP);
+		entries.remove(minecraft);
+		if (groupedMods != null) {
+			entries.remove(groupedMods);
+		}
+		Collections.sort(entries);
+		entries.add(0, minecraft);
+		if (groupedMods != null) {
+			entries.add(1, groupedMods);
+		}
+		CactiAPI.categories().clear();
+		for (CactiEntry entry : entries) {
+			CactiAPI.categories().addEntry(entry);
+		}
+	}
+
+	private static void reinitialize() {
+		categoryPage = currentCategory.getEntries().indexOf(currentTabGroup) / ENTRIES_PER_PAGE;
+		GuiScreen gui = Minecraft.getMinecraft().currentScreen;
+		if (gui instanceof GuiContainerCactiCreative) {
+			((GuiContainerCactiCreative) gui).updateSelected();
+		}
+	}
+
+	private static String getResourceOwner(ResourceLocation location) {
+		try {
+			return Minecraft.getMinecraft().getResourceManager().getResource(location).getResourcePackName();
+		} catch (IOException e) {
+			// noop
+		}
+		return "";
+	}
+
+	private static String getName(String str) {
+		return str.substring(str.indexOf(':') + 1);
+	}
+
+	private static int getAvailableEntryWidth(FontRenderer font, int rightSpace, String name) {
+		int width = font.getStringWidth(name) + 5;
+		return Math.max(10, width - Math.max(0, width - rightSpace));
 	}
 
 	private static String fitString(FontRenderer font, String text, int maxWidth) {
@@ -863,6 +834,10 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 		return result.toString();
 	}
 
+	private enum Pass {
+		BACKGROUND, TEXT
+	}
+
 	private enum SetTabAction {
 		IGNORE((gui, t) -> {}),
 		SET(GuiContainerCactiCreative::doSetCurrentCreativeTab);
@@ -899,6 +874,10 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 
 		}
 
+		private static String throwUnsupported() {
+			throw new UnsupportedOperationException();
+		}
+
 		@Override
 		public int getTabPage() {
 			return -1;
@@ -912,10 +891,6 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 		@Override
 		public ItemStack getTabIconItem() {
 			return ItemStack.EMPTY;
-		}
-
-		private static String throwUnsupported() {
-			throw new UnsupportedOperationException();
 		}
 	}
 }
