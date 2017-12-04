@@ -74,21 +74,21 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 
 	private static final int LEFT_BUTTON_WIDTH = 106;
 
-	private static boolean shouldUseButtonRibbonRender;
-
 	private static Multimap<ModContainer, CreativeTabs> creativeTabs = HashMultimap.create();
 
 	private static CactiEntryCategory currentCategory = CactiAPI.categories();
 
 	private static CactiEntryTabGroup currentTabGroup;
 
+	private boolean shouldUseButtonRibbonRender;
+
 	private static int categoryPage;
 
-	private static int[] ribbonWidths = new int[ENTRIES_PER_PAGE];
+	private int[] ribbonWidths = new int[ENTRIES_PER_PAGE];
 
-	private static List<CactiEntry> currentPageEntries;
+	private List<CactiEntry> currentPageEntries;
 
-	private static int entryCount;
+	private int entryCount;
 
 	private SetTabAction setTabAction = SetTabAction.SET;
 
@@ -283,6 +283,36 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 		String defaultPack = Minecraft.getMinecraft().mcDefaultResourcePack.getPackName();
 		String devDefaultPack = ForgeModContainer.getInstance().getName();
 		shouldUseButtonRibbonRender = widgetsOwner.isEmpty() || tabsOwner.isEmpty() || !(widgetsOwnerName.equals(Cacti.NAME) && (tabsOwnerName.equals(defaultPack) || tabsOwnerName.equals(devDefaultPack))) && !widgetsOwner.equals(tabsOwner);
+	}
+
+	private enum RibbonStyle implements Layer {
+		NORMAL(WIDGETS_TEX,
+			GuiContainerCactiCreative::renderRegularRibbon,
+			GuiContainerCactiCreative::renderRegularRibbonText
+		),
+		BUTTON(BUTTON_TEX,
+			GuiContainerCactiCreative::renderButtonRibbon,
+			GuiContainerCactiCreative::renderButtonRibbonText
+		);
+
+		private final ResourceLocation texture;
+
+		private final ImmutableList<Layer> layers;
+
+		RibbonStyle(ResourceLocation texture, Layer... layers) {
+			this.texture = texture;
+			this.layers = ImmutableList.copyOf(layers);
+		}
+
+		@Override
+		public void render(GuiContainerCactiCreative gui, boolean isSelected, FontRenderer font, String name, int width, int tiles, int offset, int y) {
+			
+		}
+	}
+
+	@FunctionalInterface
+	private interface Layer {
+		void render(GuiContainerCactiCreative gui, boolean isSelected, FontRenderer font, String name, int width, int tiles, int offset, int y);
 	}
 
 	private void initializeCreativeTabs() {
@@ -499,8 +529,11 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 		}
 		GlStateManager.disableLighting();
 		mc.getTextureManager().bindTexture(shouldUseButtonRibbonRender ? BUTTON_TEX : WIDGETS_TEX);
-		renderEntryRibbonTiles(currentPageEntries, currentTabGroup, Pass.BACKGROUND);
-		renderEntryRibbonTiles(currentPageEntries, currentTabGroup, Pass.TEXT);
+		if (shouldUseButtonRibbonRender) {
+
+		}
+		renderEntryRibbonTiles(currentPageEntries, currentTabGroup, this::renderRegularRibbon);
+		renderEntryRibbonTiles(currentPageEntries, currentTabGroup, this::renderRegularRibbonText);
 		int pages = (entryCount - 1) / ENTRIES_PER_PAGE;
 		boolean parentCategoryButtonVisible = parentCategory.visible;
 		boolean renderPages = pages > 0;
@@ -546,7 +579,7 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 		GlStateManager.disableLighting();
 	}
 
-	private void renderEntryRibbonTiles( List<CactiEntry> entries, CactiEntry selected, Pass pass) {
+	private void renderEntryRibbonTiles( List<CactiEntry> entries, CactiEntry selected, RibbonRenderer renderer) {
 		FontRenderer font = mc.fontRendererObj;
 		int rightSpace = guiLeft - 3;
 		for (int i = 0, size = entries.size(); i < size; i++) {
@@ -559,24 +592,21 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 			int offset = (width + 1) % RIBBON_TILE_SIZE;
 			int y = guiTop + RIBBON_START_Y_OFFSET + RIBBON_HEIGHT * i;
 			boolean isSelected = entry == selected;
-			if (shouldUseButtonRibbonRender) {
-				renderButtonRibbon(isSelected, pass, font, name, width, y);
-			} else {
-				renderRegularRibbon(isSelected, pass, font, name, width, tiles, offset, y);
-			}
+			renderer.render(isSelected, font, name, width, tiles, offset, y);
 		}
 	}
 
-	private void renderButtonRibbon(boolean isSelected, Pass pass, FontRenderer font, String name, int width, int y) {
+	private void renderButtonRibbonText(boolean isSelected, FontRenderer font, String name, int width, int tiles, int offset, int y) {
 		width -= 1;
-		if (pass == Pass.TEXT) {
-			if (Configurator.displaySide() == DisplaySide.LEFT) {
-				font.drawStringWithShadow(name, guiLeft - width - (width + 1) % 2, y + 3, 0xFFFFFF);
-			} else {
-				font.drawStringWithShadow(name, guiLeft + xSize + 5, y + 3, 0xFFFFFF);
-			}
-			return;
+		if (Configurator.displaySide() == DisplaySide.LEFT) {
+			font.drawStringWithShadow(name, guiLeft - width - (width + 1) % 2, y + 3, 0xFFFFFF);
+		} else {
+			font.drawStringWithShadow(name, guiLeft + xSize + 5, y + 3, 0xFFFFFF);
 		}
+	}
+
+	private void renderButtonRibbon(boolean isSelected, FontRenderer font, String name, int width, int tiles, int offset, int y) {
+		width -= 1;
 		int x;
 		if (Configurator.displaySide() == DisplaySide.LEFT) {
 			x = guiLeft - width - 4 + width % 2;
@@ -591,15 +621,20 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 		drawTexturedModalRect(x + width, y + 8, 200 - width, 46 + vOffset + 13, width, 7);
 	}
 
-	private void renderRegularRibbon(boolean isSelected, Pass pass, FontRenderer font, String name, int width, int tiles, int offset, int y) {
-		if (pass == Pass.TEXT) {
-			if (Configurator.displaySide() == DisplaySide.LEFT) {
-				font.drawString(name, guiLeft - width + 4, y + 5, 0x404040);
-			} else {
-				font.drawString(name, guiLeft + xSize + 2, y + 5, 0x404040);
-			}
-			return;
+	@FunctionalInterface
+	private interface RibbonRenderer {
+		void render(boolean isSelected, FontRenderer font, String name, int width, int tiles, int offset, int y);
+	}
+
+	private void renderRegularRibbonText(boolean isSelected, FontRenderer font, String name, int width, int tiles, int offset, int y) {
+		if (Configurator.displaySide() == DisplaySide.LEFT) {
+			font.drawString(name, guiLeft - width + 4, y + 5, 0x404040);
+		} else {
+			font.drawString(name, guiLeft + xSize + 2, y + 5, 0x404040);
 		}
+	}
+
+	public void renderRegularRibbon(boolean isSelected, FontRenderer font, String name, int width, int tiles, int offset, int y) {
 		int v;
 		if (isSelected) {
 			v = 0;
@@ -832,10 +867,6 @@ public final class GuiContainerCactiCreative extends GuiContainerCreative {
 			result.append(chr);
 		}
 		return result.toString();
-	}
-
-	private enum Pass {
-		BACKGROUND, TEXT
 	}
 
 	private enum SetTabAction {
